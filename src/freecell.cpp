@@ -187,10 +187,21 @@ int main()
         }
     }
 
+    // TODO for testing only, remove
+    for ( int i = 0; i < 12; ++i )
+    {
+        Card c;
+        c.m_suit = Suit::Hearts;
+        c.m_number = Number::Eight;
+        cascades[ 0 ].m_cards[ cascades[ 0 ].size++ ] = c;
+    }
+
     std::cout << csi::reset_cursor( 6,1 ) << "Drawing cards..." << std::flush;
 
-    const int frame_height = 30;
-    const int frame_width = 80;
+    const int cascade_with = 8;
+
+    const int frame_height = 48;
+    const int frame_width = 8 * cascade_with + 3;
     const int frame_start_row = 10;
     const int frame_start_col = ( term_size.ws_col - frame_width ) / 2;
 
@@ -205,16 +216,49 @@ int main()
 
         for ( int col = 1; col < frame_width - 1; ++col )
         {
-            std::cout << ( ( row ==  0 || row == 29 ) ? u8"─" : " " );
+            std::cout << ( ( row ==  0 || row == frame_height - 1 ) ? u8"─" : " " );
         }
 
         std::cout << ( row ==  0 ? u8"┐" :
                        row == frame_height - 1 ? u8"┘" : "│" );
     }
 
-    const int top_row = frame_start_row + 2;
-    const int start_col = frame_start_col + 2;
-    const int cascade_with = 8;
+    auto draw_card = []( const Card &c, int row, int col )
+    {
+        std::cout << csi::set_bg_color( 255 );
+
+        std::cout << csi::reset_cursor( row, col ) << csi::set_fg_color( 28 ) << u8"▀▀▀▀▀";
+        ++row;
+        std::cout << csi::reset_cursor( row, col ) << c;
+        ++row;
+
+        std::cout << csi::set_fg_color( 28 )
+                  << csi::reset_cursor( row,     col ) << u8"     "
+                  << csi::reset_cursor( row + 1, col ) << u8"▄▄▄▄▄";
+
+    };
+
+    {
+        Card c;
+        c.m_suit = Suit::Hearts;
+        c.m_number = Number::Eight;
+
+        // Draw cells
+        draw_card( c, frame_start_row + 1, frame_start_col + 2 );
+        draw_card( c, frame_start_row + 1, frame_start_col + 9 );
+        draw_card( c, frame_start_row + 1, frame_start_col + 16 );
+        draw_card( c, frame_start_row + 1, frame_start_col + 23 );
+
+        // Draw foundations
+        draw_card( c, frame_start_row + 1, frame_start_col + frame_width - 5 - 2 );
+        draw_card( c, frame_start_row + 1, frame_start_col + frame_width - 5 - 9 );
+        draw_card( c, frame_start_row + 1, frame_start_col + frame_width - 5 - 16 );
+        draw_card( c, frame_start_row + 1, frame_start_col + frame_width - 5 - 23 );
+    }
+
+
+    const int top_row = frame_start_row + 6;
+    const int start_col = frame_start_col + 3;
 
     std::cout << csi::set_bg_color( 255 ); // white bg for cards
 
