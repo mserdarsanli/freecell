@@ -139,7 +139,7 @@ std::array< Cascade, 8 > cascades;
 std::ostream& operator<<( std::ostream &out, const Card &c )
 {
     out << csi::set_bright()
-        << csi::set_fg_color( get_color( c.m_suit ) ) << to_str( c.m_number ) << to_str( c.m_suit ) << " "
+        << csi::set_fg_color( get_color( c.m_suit ) ) << " " << to_str( c.m_number ) << to_str( c.m_suit ) << " "
         << csi::set_no_bright();
 
     return out;
@@ -193,7 +193,7 @@ int main()
 
     const int top_row = 10;
     const int start_col = 3;
-    const int cascade_with = 6;
+    const int cascade_with = 7;
 
     std::cout << csi::set_bg_color( 255 ); // white bg for cards
 
@@ -206,11 +206,11 @@ int main()
 
         if ( cascade.m_cards[ 0 ].m_suit == Suit::None )
         {
-            std::cout << csi::reset_cursor( row, col ) << csi::set_fg_color( 25 ) << "<..>";
+            std::cout << csi::reset_cursor( row, col ) << csi::set_fg_color( 25 ) << "<...>";
         }
         else
         {
-            std::cout << csi::reset_cursor( row, col ) << csi::set_fg_color( 28 ) << u8"▀▀▀▀";
+            std::cout << csi::reset_cursor( row, col ) << csi::set_fg_color( 28 ) << u8"▀▀▀▀▀";
             ++row;
             std::cout << csi::reset_cursor( row, col ) << cascade.m_cards[ 0 ];
             ++row;
@@ -221,13 +221,13 @@ int main()
                 if ( card.m_suit == Suit::None )
                 {
                     std::cout << csi::set_fg_color( 28 )
-                              << csi::reset_cursor( row,     col ) << u8"    "
-                              << csi::reset_cursor( row + 1, col ) << u8"▄▄▄▄";
+                              << csi::reset_cursor( row,     col ) << u8"     "
+                              << csi::reset_cursor( row + 1, col ) << u8"▄▄▄▄▄";
                     break;
                 }
                 else
                 {
-                    std::cout << csi::reset_cursor( row, col ) << csi::set_fg_color( 248 ) << u8"────";
+                    std::cout << csi::reset_cursor( row, col ) << csi::set_fg_color( 248 ) << u8"─────";
                     ++row;
                     std::cout << csi::reset_cursor( row, col ) << card;
                     ++row;
