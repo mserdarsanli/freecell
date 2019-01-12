@@ -151,10 +151,8 @@ int main()
     ioctl(STDIN_FILENO, TIOCGWINSZ, &term_size);
 
     std::cout << csi::set_alternate_screen();
-
-    std::cout << csi::reset_cursor();
-
-    std::cout << csi::set_bg_color( 28 );
+    // Clear screen first
+    std::cout << csi::set_bg_color( 232 );
     for ( int i = 0; i < term_size.ws_row * term_size.ws_col; ++i )
         std::cout << " ";
 
@@ -191,9 +189,32 @@ int main()
 
     std::cout << csi::reset_cursor( 6,1 ) << "Drawing cards..." << std::flush;
 
-    const int top_row = 10;
-    const int start_col = 3;
-    const int cascade_with = 7;
+    const int frame_height = 30;
+    const int frame_width = 80;
+    const int frame_start_row = 10;
+    const int frame_start_col = ( term_size.ws_col - frame_width ) / 2;
+
+    // Draw frame
+    std::cout << csi::set_bg_color( 28 ) << csi::set_fg_color( 255 );
+    for ( int row = 0; row < frame_height; ++row )
+    {
+        std::cout << csi::reset_cursor( frame_start_row + row, frame_start_col );
+
+        std::cout << ( row ==  0 ? u8"┌" :
+                       row == frame_height - 1 ? u8"└" : "│" );
+
+        for ( int col = 1; col < frame_width - 1; ++col )
+        {
+            std::cout << ( ( row ==  0 || row == 29 ) ? u8"─" : " " );
+        }
+
+        std::cout << ( row ==  0 ? u8"┐" :
+                       row == frame_height - 1 ? u8"┘" : "│" );
+    }
+
+    const int top_row = frame_start_row + 2;
+    const int start_col = frame_start_col + 2;
+    const int cascade_with = 8;
 
     std::cout << csi::set_bg_color( 255 ); // white bg for cards
 
@@ -235,6 +256,7 @@ int main()
             }
         }
     }
+
     std::cout << std::flush;
 
     sleep( 100 );
