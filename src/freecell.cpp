@@ -37,15 +37,49 @@ auto set_bg_color( int color ) -> std::string_view
     return { csi_buf_, len };
 }
 
+auto set_bright() -> std::string_view
+{
+    return "\033[1m";
+}
+
+auto set_no_bright() -> std::string_view
+{
+    return "\033[22m";
+}
+
 } // namespace csi
 
 enum class Suit : uint8_t
 {
     None,
     Hearts,
-    Tiles,
+    Diamonds,
     Clubs,
     Spades,
+};
+
+std::string_view to_str( const Suit &s )
+{
+    switch ( s )
+    {
+    case Suit::None:      return "?";
+    case Suit::Hearts:    return u8"♥";
+    case Suit::Diamonds:  return u8"♦️";
+    case Suit::Clubs:     return u8"♣";
+    case Suit::Spades:    return u8"♠️";
+    }
+};
+
+int get_color( const Suit &s )
+{
+    switch ( s )
+    {
+    case Suit::None:      return 0;
+    case Suit::Hearts:    return 196;
+    case Suit::Diamonds:  return 196;
+    case Suit::Clubs:     return 232;
+    case Suit::Spades:    return 232;
+    }
 };
 
 enum class Number : uint8_t
@@ -66,6 +100,27 @@ enum class Number : uint8_t
     King,
 };
 
+std::string_view to_str( const Number &n )
+{
+    switch ( n )
+    {
+    case Number::None:   return " ?";
+    case Number::Ace:    return " 1";
+    case Number::Two:    return " 2";
+    case Number::Three:  return " 3";
+    case Number::Four:   return " 4";
+    case Number::Five:   return " 5";
+    case Number::Six:    return " 6";
+    case Number::Seven:  return " 7";
+    case Number::Eight:  return " 8";
+    case Number::Nine:   return " 9";
+    case Number::Ten:    return "10";
+    case Number::Jack:   return " J";
+    case Number::Queen:  return " Q";
+    case Number::King:   return " K";
+    }
+};
+
 struct Card
 {
     Suit m_suit = Suit::None;
@@ -78,6 +133,15 @@ struct Cascade
 };
 
 std::array< Cascade, 8 > cascades;
+
+std::ostream& operator<<( std::ostream &out, const Card &c )
+{
+    out << csi::set_bright()
+        << csi::set_fg_color( get_color( c.m_suit ) ) << to_str( c.m_number ) << to_str( c.m_suit ) << " "
+        << csi::set_no_bright();
+
+    return out;
+}
 
 int main()
 {
@@ -127,7 +191,7 @@ int main()
         {
             std::cout << csi::reset_cursor( row, col ) << csi::set_fg_color( 28 ) << u8"▀▀▀▀";
             ++row;
-            std::cout << csi::reset_cursor( row, col ) << csi::set_fg_color( 248 ) << u8"TODO";
+            std::cout << csi::reset_cursor( row, col ) << cascade.m_cards[ 0 ];
             ++row;
 
             for ( size_t card_idx = 1; ; ++card_idx ) // TODO range indexed
@@ -144,7 +208,7 @@ int main()
                 {
                     std::cout << csi::reset_cursor( row, col ) << csi::set_fg_color( 248 ) << u8"────";
                     ++row;
-                    std::cout << csi::reset_cursor( row, col ) << csi::set_fg_color( 248 ) << u8"TODO";
+                    std::cout << csi::reset_cursor( row, col ) << card;
                     ++row;
                 }
             }
