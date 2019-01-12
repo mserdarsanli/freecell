@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <array>
 #include <iostream>
 #include <string_view>
@@ -130,6 +131,7 @@ struct Card
 struct Cascade
 {
     std::array< Card, 20 > m_cards; // Max number of initial cascade + 12 more cards + null
+    int size = 0;
 };
 
 std::array< Cascade, 8 > cascades;
@@ -161,12 +163,31 @@ int main()
     std::cout << csi::reset_cursor( 3, 1 ) << "Term height = " << term_size.ws_row << std::flush;
 
     std::cout << csi::reset_cursor( 5,1 ) << "Shuffling cards..." << std::flush;
-    cascades[ 0 ].m_cards[ 0 ].m_suit = Suit::Hearts;
-    cascades[ 0 ].m_cards[ 0 ].m_number = Number::King;
-    cascades[ 0 ].m_cards[ 1 ].m_suit = Suit::Spades;
-    cascades[ 0 ].m_cards[ 1 ].m_number = Number::Eight;
-    cascades[ 1 ].m_cards[ 0 ].m_suit = Suit::Hearts;
-    cascades[ 1 ].m_cards[ 0 ].m_number = Number::Eight;
+    {
+        std::array< Card, 52 > deck;
+        for ( uint8_t suit = 1; suit <= 4; ++suit )
+        {
+            for ( uint8_t number = 1; number <= 13; ++number )
+            {
+                Card &card = deck[ ( suit - 1 ) * 13 + ( number - 1 ) ];
+                card.m_suit = static_cast< Suit >( suit );
+                card.m_number = static_cast< Number >( number );
+            }
+        }
+
+        std::random_shuffle( deck.begin(), deck.end() );
+
+        Cascade *cur_cascade = &cascades[ 0 ];
+        for ( const Card &c : deck )
+        {
+            cur_cascade->m_cards[ cur_cascade->size++ ] = c;
+            ++cur_cascade;
+            if ( cur_cascade == cascades.end() )
+            {
+               cur_cascade = &cascades[ 0 ];
+            }
+        }
+    }
 
     std::cout << csi::reset_cursor( 6,1 ) << "Drawing cards..." << std::flush;
 
@@ -216,7 +237,7 @@ int main()
     }
     std::cout << std::flush;
 
-    sleep( 10 );
+    sleep( 100 );
     std::cout << csi::reset_alternate_screen();
 
     return 0;
