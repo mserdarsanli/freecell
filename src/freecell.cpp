@@ -198,6 +198,8 @@ int main()
 
     std::cout << csi::reset_cursor( 6,1 ) << "Drawing cards..." << std::flush;
 
+    int cursor_pos = 0;
+
     const int cascade_with = 8;
 
     const int frame_height = 48;
@@ -260,10 +262,10 @@ int main()
     const int top_row = frame_start_row + 6;
     const int start_col = frame_start_col + 3;
 
-    std::cout << csi::set_bg_color( 255 ); // white bg for cards
-
     for ( size_t c_idx = 0; c_idx < 8; ++c_idx ) // TODO range indexed
     {
+        std::cout << csi::set_bg_color( 255 ); // white bg for cards
+
         const Cascade &cascade = cascades[ c_idx ];
 
         int row = top_row;
@@ -288,6 +290,14 @@ int main()
                     std::cout << csi::set_fg_color( 28 )
                               << csi::reset_cursor( row,     col ) << u8"     "
                               << csi::reset_cursor( row + 1, col ) << u8"▄▄▄▄▄";
+
+                    if ( c_idx == cursor_pos )
+                    {
+                        std::cout << csi::set_bg_color( 28 )
+                                  << csi::set_fg_color( 202 )
+                                  << csi::reset_cursor( row + 2, col - 1 ) << u8"└─────┘";
+
+                    }
                     break;
                 }
                 else
