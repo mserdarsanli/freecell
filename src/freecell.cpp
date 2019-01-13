@@ -146,77 +146,20 @@ std::ostream& operator<<( std::ostream &out, const Card &c )
     return out;
 }
 
-int main()
+struct winsize term_size;
+int cursor_pos = 0;
+
+void draw_frame()
 {
-    struct winsize term_size;
-    ioctl(STDIN_FILENO, TIOCGWINSZ, &term_size);
-
-    // Keep around for cleanup
-    struct termios old_attr;
-    tcgetattr( STDIN_FILENO, &old_attr );
-
-    {
-        struct termios new_attr = old_attr;
-        cfmakeraw( &new_attr );
-        new_attr.c_cc[ VMIN ] = 1; // Return after 1 char
-        new_attr.c_cc[ VTIME ] = 0; // Don't wait
-        tcsetattr( STDIN_FILENO, TCSANOW, &new_attr );
-    }
-
-    std::cout << csi::set_alternate_screen();
     // Clear screen first
     std::cout << csi::set_bg_color( 232 );
     for ( int i = 0; i < term_size.ws_row * term_size.ws_col; ++i )
         std::cout << " ";
 
-    std::cout << csi::reset_cursor() << "Sleeping for a few seconds...";
-    std::cout << csi::reset_cursor( 2, 1 ) << "Term width = " << term_size.ws_col;
-    std::cout << csi::reset_cursor( 3, 1 ) << "Term height = " << term_size.ws_row << std::flush;
-
-    std::cout << csi::reset_cursor( 5,1 ) << "Shuffling cards..." << std::flush;
-    {
-        std::array< Card, 52 > deck;
-        for ( uint8_t suit = 1; suit <= 4; ++suit )
-        {
-            for ( uint8_t number = 1; number <= 13; ++number )
-            {
-                Card &card = deck[ ( suit - 1 ) * 13 + ( number - 1 ) ];
-                card.m_suit = static_cast< Suit >( suit );
-                card.m_number = static_cast< Number >( number );
-            }
-        }
-
-        std::random_shuffle( deck.begin(), deck.end() );
-
-        Cascade *cur_cascade = &cascades[ 0 ];
-        for ( const Card &c : deck )
-        {
-            cur_cascade->m_cards[ cur_cascade->size++ ] = c;
-            ++cur_cascade;
-            if ( cur_cascade == cascades.end() )
-            {
-               cur_cascade = &cascades[ 0 ];
-            }
-        }
-    }
-
-    // TODO for testing only, remove
-    for ( int i = 0; i < 12; ++i )
-    {
-        Card c;
-        c.m_suit = Suit::Hearts;
-        c.m_number = Number::Eight;
-        cascades[ 0 ].m_cards[ cascades[ 0 ].size++ ] = c;
-    }
-
-    std::cout << csi::reset_cursor( 6,1 ) << "Drawing cards..." << std::flush;
-
-    int cursor_pos = 0;
-
-    const int cascade_with = 8;
+    const int cascade_width = 8;
 
     const int frame_height = 48;
-    const int frame_width = 8 * cascade_with + 3;
+    const int frame_width = 8 * cascade_width + 3;
     const int frame_start_row = 10;
     const int frame_start_col = ( term_size.ws_col - frame_width ) / 2;
 
@@ -282,7 +225,7 @@ int main()
         const Cascade &cascade = cascades[ c_idx ];
 
         int row = top_row;
-        int col = start_col + cascade_with * c_idx;
+        int col = start_col + cascade_width * c_idx;
 
         if ( cascade.m_cards[ 0 ].m_suit == Suit::None )
         {
@@ -325,11 +268,109 @@ int main()
     }
 
     std::cout << std::flush;
+}
 
-    char input_buf[ 100 ];
-    read( STDIN_FILENO, input_buf, 100 );
+int main()
+{
+    ioctl(STDIN_FILENO, TIOCGWINSZ, &term_size);
+
+    // Keep around for cleanup
+    struct termios old_attr;
+    tcgetattr( STDIN_FILENO, &old_attr );
+
+    {
+        struct termios new_attr = old_attr;
+        cfmakeraw( &new_attr );
+        new_attr.c_cc[ VMIN ] = 1; // Return after 1 char
+        new_attr.c_cc[ VTIME ] = 0; // Don't wait
+        tcsetattr( STDIN_FILENO, TCSANOW, &new_attr );
+    }
+
+    std::cout << csi::set_alternate_screen();
+
+    std::cerr << "Term width = " << term_size.ws_col;
+    std::cerr << "Term height = " << term_size.ws_row << std::flush;
+
+    {
+        std::array< Card, 52 > deck;
+        for ( uint8_t suit = 1; suit <= 4; ++suit )
+        {
+            for ( uint8_t number = 1; number <= 13; ++number )
+            {
+                Card &card = deck[ ( suit - 1 ) * 13 + ( number - 1 ) ];
+                card.m_suit = static_cast< Suit >( suit );
+                card.m_number = static_cast< Number >( number );
+            }
+        }
+
+        std::random_shuffle( deck.begin(), deck.end() );
+
+        Cascade *cur_cascade = &cascades[ 0 ];
+        for ( const Card &c : deck )
+        {
+            cur_cascade->m_cards[ cur_cascade->size++ ] = c;
+            ++cur_cascade;
+            if ( cur_cascade == cascades.end() )
+            {
+               cur_cascade = &cascades[ 0 ];
+            }
+        }
+    }
+
+    // TODO for testing only, remove
+    for ( int i = 0; i < 12; ++i )
+    {
+        Card c;
+        c.m_suit = Suit::Hearts;
+        c.m_number = Number::Eight;
+        cascades[ 0 ].m_cards[ cascades[ 0 ].size++ ] = c;
+    }
+
+    while ( true )
+    {
+        draw_frame();
+
+        char input_buf[ 100 ];
+        int s = read( STDIN_FILENO, input_buf, 100 );
 
 
+        if ( s == 1 && input_buf[ 0 ] == 'q' )
+        {
+            break;
+        }
+        else if ( s == 3 && input_buf[ 0 ] == 033 && input_buf[ 1 ] == '[' && input_buf[ 2 ] == 'D' ) // Left
+        {
+            if ( cursor_pos > 0 )
+            {
+                --cursor_pos;
+            }
+        }
+        else if ( s == 3 && input_buf[ 0 ] == 033 && input_buf[ 1 ] == '[' && input_buf[ 2 ] == 'C' ) // Right
+        {
+            if ( cursor_pos < 7 )
+            {
+                ++cursor_pos;
+            }
+        }
+        else
+        {
+            std::cerr << "Unhandled data of size = " << s << "\n";
+            std::cerr << "Bytes:\n";
+            for ( int i = 0; i < s; ++i )
+            {
+                int val = static_cast< unsigned int >( static_cast< unsigned char >( input_buf[ i ] ) );
+                std::cerr << "  - " << val;
+                if ( isprint( val ) )
+                {
+                    std::cerr << "[" << (char)val << "]";
+                }
+                std::cerr << "\n";
+            }
+        }
+    }
+
+
+    std::cerr << "Bye!\n";
     std::cout << csi::reset_alternate_screen();
     tcsetattr( STDIN_FILENO, TCSANOW, &old_attr );
     std::cout << "Bye!\n";
