@@ -146,8 +146,9 @@ std::ostream& operator<<( std::ostream &out, const Card &c )
     return out;
 }
 
-struct winsize term_size;
-int cursor_pos = 0;
+struct winsize term_size; // TODO react to SIGWINCH
+int cursor_row = 1;
+int cursor_col = 0;
 
 void draw_frame()
 {
@@ -207,6 +208,13 @@ void draw_frame()
         draw_card( c, frame_start_row + 1, frame_start_col + 16 );
         draw_card( c, frame_start_row + 1, frame_start_col + 23 );
 
+        if ( cursor_row == 0 )
+        {
+            std::cout << csi::set_bg_color( 28 )
+                      << csi::set_fg_color( 202 )
+                      << csi::reset_cursor( frame_start_row + 5, frame_start_col + 1 + 7 * cursor_col ) << u8"└─────┘";
+        }
+
         // Draw foundations
         draw_card( c, frame_start_row + 1, frame_start_col + frame_width - 5 - 2 );
         draw_card( c, frame_start_row + 1, frame_start_col + frame_width - 5 - 9 );
@@ -247,12 +255,11 @@ void draw_frame()
                               << csi::reset_cursor( row,     col ) << u8"     "
                               << csi::reset_cursor( row + 1, col ) << u8"▄▄▄▄▄";
 
-                    if ( c_idx == cursor_pos )
+                    if ( cursor_row == 1 && c_idx == cursor_col )
                     {
                         std::cout << csi::set_bg_color( 28 )
                                   << csi::set_fg_color( 202 )
                                   << csi::reset_cursor( row + 2, col - 1 ) << u8"└─────┘";
-
                     }
                     break;
                 }
@@ -338,18 +345,36 @@ int main()
         {
             break;
         }
+        else if ( s == 3 && input_buf[ 0 ] == 033 && input_buf[ 1 ] == '[' && input_buf[ 2 ] == 'A' ) // Up
+        {
+            if ( cursor_row > 0 )
+            {
+                --cursor_row;
+                if ( cursor_col > 3 )
+                {
+                    cursor_col = 3;
+                }
+            }
+        }
+        else if ( s == 3 && input_buf[ 0 ] == 033 && input_buf[ 1 ] == '[' && input_buf[ 2 ] == 'B' ) // Down
+        {
+            if ( cursor_row < 1 )
+            {
+                ++cursor_row;
+            }
+        }
         else if ( s == 3 && input_buf[ 0 ] == 033 && input_buf[ 1 ] == '[' && input_buf[ 2 ] == 'D' ) // Left
         {
-            if ( cursor_pos > 0 )
+            if ( cursor_col > 0 )
             {
-                --cursor_pos;
+                --cursor_col;
             }
         }
         else if ( s == 3 && input_buf[ 0 ] == 033 && input_buf[ 1 ] == '[' && input_buf[ 2 ] == 'C' ) // Right
         {
-            if ( cursor_pos < 7 )
+            if ( cursor_row == 0 && cursor_col < 3 || cursor_row == 1 && cursor_col < 7 )
             {
-                ++cursor_pos;
+                ++cursor_col;
             }
         }
         else
