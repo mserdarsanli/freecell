@@ -132,6 +132,12 @@ struct Card
     {
         return m_suit != Suit::None;
     }
+
+    bool can_move_under( const Card &ot ) const
+    {
+        return get_color( this->m_suit ) != get_color( ot.m_suit )
+            && static_cast< int >( this->m_number ) + 1 == static_cast< int >( ot.m_number );
+    }
 };
 
 struct Cascade
@@ -157,6 +163,45 @@ int cursor_col = 0;
 
 int selected_row = -1;
 int selected_col = -1;
+
+void try_move()
+{
+    // Tries to move from seleected to cursor
+
+    if ( selected_row == 1 && cursor_row == 1 )
+    {
+        Cascade &from_cascade = cascades[ selected_col ];
+        Cascade &to_cascade = cascades[ cursor_col ];
+
+        // TODO handle when to_cascade is empty
+
+        // move from one cascade to another
+        for ( int num_cards = 1; num_cards < from_cascade.size ; ++num_cards )
+        {
+            if ( num_cards > 1 )
+            {
+                if ( ! from_cascade.m_cards[ from_cascade.size - num_cards + 1 ].can_move_under( from_cascade.m_cards[ from_cascade.size - num_cards ] ) )
+                {
+                    break;
+                }
+            }
+
+            if ( from_cascade.m_cards[ from_cascade.size - num_cards ].can_move_under( to_cascade.m_cards[ to_cascade.size - 1 ] ) )
+            {
+                std::copy( from_cascade.m_cards.begin() + from_cascade.size - num_cards,
+                           from_cascade.m_cards.begin() + from_cascade.size,
+                           to_cascade.m_cards.begin() + to_cascade.size );
+
+                from_cascade.size -= num_cards;
+                to_cascade.size += num_cards;
+                selected_row = -1;
+                selected_col = -1;
+                break;
+            }
+        }
+    }
+
+}
 
 // Beware of above/below distinction, since cards above are rendered below in the terminal..
 enum CardAttr
@@ -293,7 +338,7 @@ void draw_frame()
                 const Card &card = cascade.m_cards[ card_idx ];
 
                 int attrs = 0;
-                attrs |= ( cascade.m_cards[ card_idx + 1 ] ? CardAttr::HasCardAbove : 0 );
+                attrs |= ( card_idx < cascade.size - 1 ? CardAttr::HasCardAbove : 0 );
                 attrs |= ( card_idx > 0 ? CardAttr::HasCardBelow : 0 );
                 attrs |= ( card_idx == cascade.size - 1 && selected_row == 1 && selected_col == c_idx ? CardAttr::Selected : 0 );
 
@@ -397,6 +442,10 @@ int main()
                 // Deselect
                 selected_row = -1;
                 selected_col = -1;
+            }
+            else
+            {
+                try_move();
             }
         }
         else if ( s == 3 && input_buf[ 0 ] == 033 && input_buf[ 1 ] == '[' && input_buf[ 2 ] == 'A' ) // Up
