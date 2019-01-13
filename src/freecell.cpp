@@ -5,6 +5,7 @@
 
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <termios.h>
 
 namespace csi {
 
@@ -149,6 +150,18 @@ int main()
 {
     struct winsize term_size;
     ioctl(STDIN_FILENO, TIOCGWINSZ, &term_size);
+
+    // Keep around for cleanup
+    struct termios old_attr;
+    tcgetattr( STDIN_FILENO, &old_attr );
+
+    {
+        struct termios new_attr = old_attr;
+        cfmakeraw( &new_attr );
+        new_attr.c_cc[ VMIN ] = 1; // Return after 1 char
+        new_attr.c_cc[ VTIME ] = 0; // Don't wait
+        tcsetattr( STDIN_FILENO, TCSANOW, &new_attr );
+    }
 
     std::cout << csi::set_alternate_screen();
     // Clear screen first
@@ -313,8 +326,13 @@ int main()
 
     std::cout << std::flush;
 
-    sleep( 100 );
+    char input_buf[ 100 ];
+    read( STDIN_FILENO, input_buf, 100 );
+
+
     std::cout << csi::reset_alternate_screen();
+    tcsetattr( STDIN_FILENO, TCSANOW, &old_attr );
+    std::cout << "Bye!\n";
 
     return 0;
 }
