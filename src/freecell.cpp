@@ -159,21 +159,31 @@ int cursor_col = 0;
 enum CardAttr
 {
     HasCardAbove = 1,
+    HasCardBelow = 2,
 };
 
 void draw_card( const Card &c, int row, int col, int attrs = 0 )
 {
+    std::cout << csi::set_bg_color( 255 );
 
-    std::cout << csi::set_bg_color( 255 ) << csi::set_fg_color( 28 )
-              << csi::reset_cursor( row,     col ) << u8"▀▀▀▀▀"
-              << csi::reset_cursor( row + 1, col ) << c << csi::set_fg_color( 28 );
+    if ( attrs & CardAttr::HasCardBelow )
+    {
+        std::cout << csi::set_fg_color( 248 ) << csi::reset_cursor( row, col ) << u8"─────";
+    }
+    else
+    {
+        std::cout << csi::set_fg_color( 28 ) << csi::reset_cursor( row, col ) << u8"▀▀▀▀▀";
+    }
+
+    std::cout << csi::reset_cursor( row + 1, col ) << c;
 
     if ( attrs & CardAttr::HasCardAbove )
     {
         return;
     }
 
-    std::cout << csi::reset_cursor( row + 2, col ) << u8"     "
+    std::cout << csi::set_fg_color( 28 )
+              << csi::reset_cursor( row + 2, col ) << u8"     "
               << csi::reset_cursor( row + 3, col ) << u8"▄▄▄▄▄";
 }
 
@@ -253,35 +263,28 @@ void draw_frame()
         }
         else
         {
-            draw_card( cascade.m_cards[ 0 ], row, col, ( cascade.m_cards[ 1 ] ? CardAttr::HasCardAbove : 0 ) );
-            row += 2;
-
-            for ( size_t card_idx = 1; ; ++card_idx ) // TODO range indexed
+            for ( size_t card_idx = 0; card_idx < cascade.size ; ++card_idx ) // TODO range indexed
             {
                 const Card &card = cascade.m_cards[ card_idx ];
-                if ( card.m_suit == Suit::None )
-                {
-                    std::cout << csi::set_fg_color( 28 )
-                              << csi::reset_cursor( row,     col ) << u8"     "
-                              << csi::reset_cursor( row + 1, col ) << u8"▄▄▄▄▄";
 
-                    if ( cursor_row == 1 && c_idx == cursor_col )
-                    {
-                        std::cout << csi::set_bg_color( 28 )
-                                  << csi::set_fg_color( 202 )
-                                  << csi::reset_cursor( row + 2, col - 1 ) << u8"└─────┘";
-                    }
-                    break;
-                }
-                else
-                {
-                    std::cout << csi::reset_cursor( row, col ) << csi::set_fg_color( 248 ) << u8"─────";
-                    ++row;
-                    std::cout << csi::reset_cursor( row, col ) << card;
-                    ++row;
-                }
+                int attrs = 0;
+                attrs |= ( cascade.m_cards[ card_idx + 1 ] ? CardAttr::HasCardAbove : 0 );
+                attrs |= ( card_idx > 0 ? CardAttr::HasCardBelow : 0 );
+
+                draw_card( cascade.m_cards[ card_idx ], row + 2 * card_idx, col, attrs );
             }
         }
+    }
+
+    if ( cursor_row == 1 )
+    {
+        int row = top_row;
+        int col = start_col + cascade_width * cursor_col;
+
+        // TODO recalculate row
+        std::cout << csi::set_bg_color( 28 )
+                  << csi::set_fg_color( 202 )
+                  << csi::reset_cursor( row + 2 + 2 * cascades[ cursor_col ].size, col - 1 ) << u8"└─────┘";
     }
 
     std::cout << std::flush;
