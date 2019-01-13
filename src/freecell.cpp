@@ -155,6 +155,9 @@ struct winsize term_size; // TODO react to SIGWINCH
 int cursor_row = 1;
 int cursor_col = 0;
 
+int selected_row = -1;
+int selected_col = -1;
+
 // Beware of above/below distinction, since cards above are rendered below in the terminal..
 enum CardAttr
 {
@@ -292,7 +295,7 @@ void draw_frame()
                 int attrs = 0;
                 attrs |= ( cascade.m_cards[ card_idx + 1 ] ? CardAttr::HasCardAbove : 0 );
                 attrs |= ( card_idx > 0 ? CardAttr::HasCardBelow : 0 );
-                attrs |= ( card_idx == cascade.size - 1 && c_idx == 2 ? CardAttr::Selected : 0 ); // TODO !1!11
+                attrs |= ( card_idx == cascade.size - 1 && selected_row == 1 && selected_col == c_idx ? CardAttr::Selected : 0 );
 
                 draw_card( cascade.m_cards[ card_idx ], row + 2 * card_idx, col, attrs );
             }
@@ -380,6 +383,21 @@ int main()
         if ( s == 1 && input_buf[ 0 ] == 'q' )
         {
             break;
+        }
+        else if ( s == 1 && input_buf[ 0 ] == ' ' )
+        {
+            if ( selected_row == -1 )
+            {
+                // Select
+                selected_row = cursor_row;
+                selected_col = cursor_col;
+            }
+            else if ( selected_row == cursor_row && selected_col == cursor_col )
+            {
+                // Deselect
+                selected_row = -1;
+                selected_col = -1;
+            }
         }
         else if ( s == 3 && input_buf[ 0 ] == 033 && input_buf[ 1 ] == '[' && input_buf[ 2 ] == 'A' ) // Up
         {
