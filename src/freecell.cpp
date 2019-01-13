@@ -127,6 +127,11 @@ struct Card
 {
     Suit m_suit = Suit::None;
     Number m_number = Number::None;
+
+    operator bool() const
+    {
+        return m_suit != Suit::None;
+    }
 };
 
 struct Cascade
@@ -149,6 +154,28 @@ std::ostream& operator<<( std::ostream &out, const Card &c )
 struct winsize term_size; // TODO react to SIGWINCH
 int cursor_row = 1;
 int cursor_col = 0;
+
+// Beware of above/below distinction, since cards above are rendered below in the terminal..
+enum CardAttr
+{
+    HasCardAbove = 1,
+};
+
+void draw_card( const Card &c, int row, int col, int attrs = 0 )
+{
+
+    std::cout << csi::set_bg_color( 255 ) << csi::set_fg_color( 28 )
+              << csi::reset_cursor( row,     col ) << u8"▀▀▀▀▀"
+              << csi::reset_cursor( row + 1, col ) << c << csi::set_fg_color( 28 );
+
+    if ( attrs & CardAttr::HasCardAbove )
+    {
+        return;
+    }
+
+    std::cout << csi::reset_cursor( row + 2, col ) << u8"     "
+              << csi::reset_cursor( row + 3, col ) << u8"▄▄▄▄▄";
+}
 
 void draw_frame()
 {
@@ -181,21 +208,6 @@ void draw_frame()
         std::cout << ( row ==  0 ? u8"┐" :
                        row == frame_height - 1 ? u8"┘" : "│" );
     }
-
-    auto draw_card = []( const Card &c, int row, int col )
-    {
-        std::cout << csi::set_bg_color( 255 );
-
-        std::cout << csi::reset_cursor( row, col ) << csi::set_fg_color( 28 ) << u8"▀▀▀▀▀";
-        ++row;
-        std::cout << csi::reset_cursor( row, col ) << c;
-        ++row;
-
-        std::cout << csi::set_fg_color( 28 )
-                  << csi::reset_cursor( row,     col ) << u8"     "
-                  << csi::reset_cursor( row + 1, col ) << u8"▄▄▄▄▄";
-
-    };
 
     {
         Card c;
@@ -241,10 +253,8 @@ void draw_frame()
         }
         else
         {
-            std::cout << csi::reset_cursor( row, col ) << csi::set_fg_color( 28 ) << u8"▀▀▀▀▀";
-            ++row;
-            std::cout << csi::reset_cursor( row, col ) << cascade.m_cards[ 0 ];
-            ++row;
+            draw_card( cascade.m_cards[ 0 ], row, col, ( cascade.m_cards[ 1 ] ? CardAttr::HasCardAbove : 0 ) );
+            row += 2;
 
             for ( size_t card_idx = 1; ; ++card_idx ) // TODO range indexed
             {
