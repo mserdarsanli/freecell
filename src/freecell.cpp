@@ -408,15 +408,6 @@ int main()
         }
     }
 
-    // TODO for testing only, remove
-    for ( int i = 0; i < 12; ++i )
-    {
-        Card c;
-        c.m_suit = Suit::Hearts;
-        c.m_number = Number::Eight;
-        cascades[ 0 ].m_cards[ cascades[ 0 ].size++ ] = c;
-    }
-
     while ( true )
     {
         draw_frame();
