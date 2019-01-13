@@ -160,13 +160,18 @@ enum CardAttr
 {
     HasCardAbove = 1,
     HasCardBelow = 2,
+    Selected = 4,
 };
 
 void draw_card( const Card &c, int row, int col, int attrs = 0 )
 {
     std::cout << csi::set_bg_color( 255 );
 
-    if ( attrs & CardAttr::HasCardBelow )
+    if ( attrs & CardAttr::Selected )
+    {
+        std::cout << csi::set_fg_color( 202 ) << csi::reset_cursor( row, col - 1 ) << u8"█▀▀▀▀▀█";
+    }
+    else if ( attrs & CardAttr::HasCardBelow )
     {
         std::cout << csi::set_fg_color( 248 ) << csi::reset_cursor( row, col ) << u8"─────";
     }
@@ -175,16 +180,33 @@ void draw_card( const Card &c, int row, int col, int attrs = 0 )
         std::cout << csi::set_fg_color( 28 ) << csi::reset_cursor( row, col ) << u8"▀▀▀▀▀";
     }
 
+    if ( attrs & CardAttr::Selected )
+    {
+        std::cout << csi::set_fg_color( 202 ) << csi::reset_cursor( row + 1, col - 1 ) << u8"█";
+    }
     std::cout << csi::reset_cursor( row + 1, col ) << c;
+    if ( attrs & CardAttr::Selected )
+    {
+        std::cout << csi::set_fg_color( 202 ) << csi::reset_cursor( row + 1, col + 5 ) << u8"█";
+    }
 
     if ( attrs & CardAttr::HasCardAbove )
     {
         return;
     }
 
-    std::cout << csi::set_fg_color( 28 )
-              << csi::reset_cursor( row + 2, col ) << u8"     "
-              << csi::reset_cursor( row + 3, col ) << u8"▄▄▄▄▄";
+    if ( attrs & CardAttr::Selected )
+    {
+        std::cout << csi::set_fg_color( 202 )
+                  << csi::reset_cursor( row + 2, col - 1 ) << u8"█     █"
+                  << csi::reset_cursor( row + 3, col - 1 ) << u8"█▄▄▄▄▄█";
+    }
+    else
+    {
+        std::cout << csi::set_fg_color( 28 )
+                  << csi::reset_cursor( row + 2, col ) << u8"     "
+                  << csi::reset_cursor( row + 3, col ) << u8"▄▄▄▄▄";
+    }
 }
 
 void draw_frame()
@@ -270,6 +292,7 @@ void draw_frame()
                 int attrs = 0;
                 attrs |= ( cascade.m_cards[ card_idx + 1 ] ? CardAttr::HasCardAbove : 0 );
                 attrs |= ( card_idx > 0 ? CardAttr::HasCardBelow : 0 );
+                attrs |= ( card_idx == cascade.size - 1 && c_idx == 2 ? CardAttr::Selected : 0 ); // TODO !1!11
 
                 draw_card( cascade.m_cards[ card_idx ], row + 2 * card_idx, col, attrs );
             }
