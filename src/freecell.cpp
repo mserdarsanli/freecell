@@ -250,10 +250,10 @@ void draw_frame()
         c.m_number = Number::Eight;
 
         // Draw cells
-        draw_card( c, frame_start_row + 1, frame_start_col + 2 );
-        draw_card( c, frame_start_row + 1, frame_start_col + 9 );
-        draw_card( c, frame_start_row + 1, frame_start_col + 16 );
-        draw_card( c, frame_start_row + 1, frame_start_col + 23 );
+        draw_card( c, frame_start_row + 1, frame_start_col +  2, ( selected_row == 0 && selected_col == 0 ? CardAttr::Selected : 0 ) );
+        draw_card( c, frame_start_row + 1, frame_start_col +  9, ( selected_row == 0 && selected_col == 1 ? CardAttr::Selected : 0 ) );
+        draw_card( c, frame_start_row + 1, frame_start_col + 16, ( selected_row == 0 && selected_col == 2 ? CardAttr::Selected : 0 ) );
+        draw_card( c, frame_start_row + 1, frame_start_col + 23, ( selected_row == 0 && selected_col == 3 ? CardAttr::Selected : 0 ) );
 
         if ( cursor_row == 0 )
         {
