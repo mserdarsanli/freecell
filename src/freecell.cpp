@@ -209,10 +209,22 @@ enum CardAttr
     HasCardAbove = 1,
     HasCardBelow = 2,
     Selected = 4,
+    EmptySlot = 8,
 };
 
 void draw_card( const Card &c, int row, int col, int attrs = 0 )
 {
+    if ( attrs & CardAttr::EmptySlot )
+    {
+        std::cout << csi::set_bg_color( 247 ) << csi::set_fg_color( 28 )
+                  << csi::reset_cursor( row,     col ) << u8"▀▀▀▀▀"
+                  << csi::reset_cursor( row + 1, col ) << u8"     "
+                  << csi::reset_cursor( row + 2, col ) << u8"     "
+                  << csi::reset_cursor( row + 3, col ) << u8"▄▄▄▄▄";
+        return;
+    }
+
+
     std::cout << csi::set_bg_color( 255 );
 
     if ( attrs & CardAttr::Selected )
@@ -294,11 +306,11 @@ void draw_frame()
         c.m_suit = Suit::Hearts;
         c.m_number = Number::Eight;
 
-        // Draw cells
-        draw_card( c, frame_start_row + 1, frame_start_col +  2, ( selected_row == 0 && selected_col == 0 ? CardAttr::Selected : 0 ) );
-        draw_card( c, frame_start_row + 1, frame_start_col +  9, ( selected_row == 0 && selected_col == 1 ? CardAttr::Selected : 0 ) );
-        draw_card( c, frame_start_row + 1, frame_start_col + 16, ( selected_row == 0 && selected_col == 2 ? CardAttr::Selected : 0 ) );
-        draw_card( c, frame_start_row + 1, frame_start_col + 23, ( selected_row == 0 && selected_col == 3 ? CardAttr::Selected : 0 ) );
+        // Draw cells, TODO Fix selected
+        draw_card( c, frame_start_row + 1, frame_start_col +  2, CardAttr::EmptySlot | ( selected_row == 0 && selected_col == 0 ? CardAttr::Selected : 0 ) );
+        draw_card( c, frame_start_row + 1, frame_start_col +  9, CardAttr::EmptySlot | ( selected_row == 0 && selected_col == 1 ? CardAttr::Selected : 0 ) );
+        draw_card( c, frame_start_row + 1, frame_start_col + 16, CardAttr::EmptySlot | ( selected_row == 0 && selected_col == 2 ? CardAttr::Selected : 0 ) );
+        draw_card( c, frame_start_row + 1, frame_start_col + 23, CardAttr::EmptySlot | ( selected_row == 0 && selected_col == 3 ? CardAttr::Selected : 0 ) );
 
         if ( cursor_row == 0 )
         {
