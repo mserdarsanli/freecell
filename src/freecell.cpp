@@ -107,7 +107,7 @@ std::string_view to_str( const Number &n )
     switch ( n )
     {
     case Number::None:   return " ?";
-    case Number::Ace:    return " 1";
+    case Number::Ace:    return " A";
     case Number::Two:    return " 2";
     case Number::Three:  return " 3";
     case Number::Four:   return " 4";
