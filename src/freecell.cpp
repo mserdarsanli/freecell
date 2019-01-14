@@ -133,6 +133,11 @@ struct Card
         return m_suit != Suit::None;
     }
 
+    int foundation_id() const
+    {
+        return static_cast< int >( m_suit ) - 1;
+    }
+
     bool can_move_under( const Card &ot ) const
     {
         return get_color( this->m_suit ) != get_color( ot.m_suit )
@@ -148,6 +153,7 @@ struct Cascade
 
 std::array< Cascade, 8 > cascades;
 std::array< Card, 4 > cells;
+std::array< Card, 4 > foundations;
 
 std::ostream& operator<<( std::ostream &out, const Card &c )
 {
@@ -225,6 +231,51 @@ void try_move()
             selected_row = -1;
             selected_col = -1;
             return;
+        }
+    }
+}
+
+bool try_move_to_foundation( const Card &c )
+{
+    if ( !c )
+    {
+        return false;
+    }
+
+    Card &foundation_card = foundations[ c.foundation_id() ];
+
+    if ( c.m_number == Number::Ace
+      || static_cast< int >( c.m_number ) == static_cast< int >( foundation_card.m_number ) + 1 )
+    {
+        foundation_card = c;
+        return true;
+    }
+
+    return false;
+}
+
+void try_move_to_foundation()
+{
+    // TODO bug if selected element is moved to foundation?
+
+    if ( cursor_row == 0 )
+    {
+        if ( try_move_to_foundation( cells[ cursor_col ] ) )
+        {
+            cells[ cursor_col ].m_suit = Suit::None;
+        }
+    }
+    else // Cursor row == 1
+    {
+        Cascade &cascade = cascades[ cursor_col ];
+        if ( cascade.size == 0 )
+        {
+            return;
+        }
+
+        if ( try_move_to_foundation( cascade.m_cards[ cascade.size - 1 ] ) )
+        {
+            --cascade.size;
         }
     }
 }
@@ -341,12 +392,11 @@ void draw_frame()
                       << csi::reset_cursor( frame_start_row + 5, frame_start_col + 1 + 7 * cursor_col ) << u8"└─────┘";
         }
 
-        // Draw foundations
-        Card c;
-        draw_card( c, frame_start_row + 1, frame_start_col + frame_width - 5 -  2, CardAttr::EmptySlot );
-        draw_card( c, frame_start_row + 1, frame_start_col + frame_width - 5 -  9, CardAttr::EmptySlot );
-        draw_card( c, frame_start_row + 1, frame_start_col + frame_width - 5 - 16, CardAttr::EmptySlot );
-        draw_card( c, frame_start_row + 1, frame_start_col + frame_width - 5 - 23, CardAttr::EmptySlot );
+        for ( int cell_idx = 0; cell_idx < 4; ++cell_idx )
+        {
+            int attrs = ( foundations[ cell_idx ] ? 0 : CardAttr::EmptySlot );
+            draw_card( foundations[ cell_idx ], frame_start_row + 1, frame_start_col + frame_width - 7 - cell_idx * 7, attrs );
+        }
     }
 
 
@@ -476,6 +526,11 @@ int main()
             {
                 try_move();
             }
+        }
+        else if ( s == 1 && input_buf[ 0 ] == 13 )
+        {
+            // Enter, move item to foundation
+            try_move_to_foundation();
         }
         else if ( s == 3 && input_buf[ 0 ] == 033 && input_buf[ 1 ] == '[' && input_buf[ 2 ] == 'A' ) // Up
         {
