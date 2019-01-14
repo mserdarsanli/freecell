@@ -183,7 +183,7 @@ void try_move()
         // TODO handle when to_cascade is empty
 
         // move from one cascade to another
-        for ( int num_cards = 1; num_cards < from_cascade.size ; ++num_cards )
+        for ( int num_cards = 1; num_cards <= from_cascade.size ; ++num_cards )
         {
             if ( num_cards > 1 )
             {
