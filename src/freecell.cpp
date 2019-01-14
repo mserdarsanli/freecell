@@ -208,7 +208,6 @@ void try_move()
             return;
         }
 
-        // TODO check from cascade empty?
         Cascade &from_cascade = cascades[ selected_col ];
         cells[ cursor_col ] = from_cascade.m_cards[ from_cascade.size-- - 1 ];
         selected_row = -1;
@@ -217,8 +216,6 @@ void try_move()
     }
     else if ( selected_row == 0 && cursor_row == 1 )
     {
-        // Assume selected card exists
-
         Cascade &to_cascade = cascades[ cursor_col ];
 
         if ( to_cascade.size == 0 || cells[ selected_col ].can_move_under( to_cascade.m_cards[ to_cascade.size - 1 ] ) )
@@ -462,9 +459,12 @@ int main()
         {
             if ( selected_row == -1 )
             {
-                // Select
-                selected_row = cursor_row;
-                selected_col = cursor_col;
+                // Select non empty cells/cascades
+                if ( cursor_row == 0 && cells[ cursor_col ] || cursor_row == 1 && cascades[ cursor_col ].size )
+                {
+                    selected_row = cursor_row;
+                    selected_col = cursor_col;
+                }
             }
             else if ( selected_row == cursor_row && selected_col == cursor_col )
             {
