@@ -147,6 +147,7 @@ struct Cascade
 };
 
 std::array< Cascade, 8 > cascades;
+std::array< Card, 4 > cells;
 
 std::ostream& operator<<( std::ostream &out, const Card &c )
 {
@@ -200,7 +201,35 @@ void try_move()
             }
         }
     }
+    else if ( selected_row == 1 && cursor_row == 0 )
+    {
+        if ( cells[ cursor_col ] )
+        {
+            return;
+        }
 
+        // TODO check from cascade empty?
+        Cascade &from_cascade = cascades[ selected_col ];
+        cells[ cursor_col ] = from_cascade.m_cards[ from_cascade.size-- - 1 ];
+        selected_row = -1;
+        selected_col = -1;
+        return;
+    }
+    else if ( selected_row == 0 && cursor_row == 1 )
+    {
+        // Assume selected card exists
+
+        Cascade &to_cascade = cascades[ cursor_col ];
+
+        if ( to_cascade.size == 0 || cells[ selected_col ].can_move_under( to_cascade.m_cards[ to_cascade.size - 1 ] ) )
+        {
+            to_cascade.m_cards[ to_cascade.size++ ] = cells[ selected_col ];
+            cells[ selected_col ].m_suit = Suit::None;
+            selected_row = -1;
+            selected_col = -1;
+            return;
+        }
+    }
 }
 
 // Beware of above/below distinction, since cards above are rendered below in the terminal..
@@ -302,15 +331,11 @@ void draw_frame()
     }
 
     {
-        Card c;
-        c.m_suit = Suit::Hearts;
-        c.m_number = Number::Eight;
-
-        // Draw cells, TODO Fix selected
-        draw_card( c, frame_start_row + 1, frame_start_col +  2, CardAttr::EmptySlot | ( selected_row == 0 && selected_col == 0 ? CardAttr::Selected : 0 ) );
-        draw_card( c, frame_start_row + 1, frame_start_col +  9, CardAttr::EmptySlot | ( selected_row == 0 && selected_col == 1 ? CardAttr::Selected : 0 ) );
-        draw_card( c, frame_start_row + 1, frame_start_col + 16, CardAttr::EmptySlot | ( selected_row == 0 && selected_col == 2 ? CardAttr::Selected : 0 ) );
-        draw_card( c, frame_start_row + 1, frame_start_col + 23, CardAttr::EmptySlot | ( selected_row == 0 && selected_col == 3 ? CardAttr::Selected : 0 ) );
+        for ( int cell_idx = 0; cell_idx < 4; ++cell_idx )
+        {
+            int attrs = ( cells[ cell_idx ] ? 0 : CardAttr::EmptySlot ) | ( selected_row == 0 && selected_col == cell_idx ? CardAttr::Selected : 0 );
+            draw_card( cells[ cell_idx ], frame_start_row + 1, frame_start_col +  2 + 7 * cell_idx, attrs );
+        }
 
         if ( cursor_row == 0 )
         {
@@ -320,10 +345,11 @@ void draw_frame()
         }
 
         // Draw foundations
-        draw_card( c, frame_start_row + 1, frame_start_col + frame_width - 5 - 2 );
-        draw_card( c, frame_start_row + 1, frame_start_col + frame_width - 5 - 9 );
-        draw_card( c, frame_start_row + 1, frame_start_col + frame_width - 5 - 16 );
-        draw_card( c, frame_start_row + 1, frame_start_col + frame_width - 5 - 23 );
+        Card c;
+        draw_card( c, frame_start_row + 1, frame_start_col + frame_width - 5 -  2, CardAttr::EmptySlot );
+        draw_card( c, frame_start_row + 1, frame_start_col + frame_width - 5 -  9, CardAttr::EmptySlot );
+        draw_card( c, frame_start_row + 1, frame_start_col + frame_width - 5 - 16, CardAttr::EmptySlot );
+        draw_card( c, frame_start_row + 1, frame_start_col + frame_width - 5 - 23, CardAttr::EmptySlot );
     }
 
 
