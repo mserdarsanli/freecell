@@ -21,6 +21,16 @@ auto reset_alternate_screen() -> std::string_view
     return "\033[?1049l";
 }
 
+auto hide_cursor() -> std::string_view
+{
+    return "\033[?25l";
+}
+
+auto show_cursor() -> std::string_view
+{
+    return "\033[?25h";
+}
+
 auto reset_cursor( int row = 1, int col = 1 ) -> std::string_view
 {
     size_t len = sprintf( csi_buf_, "\033[%d;%dH", row, col );
@@ -462,7 +472,7 @@ int main()
         tcsetattr( STDIN_FILENO, TCSANOW, &new_attr );
     }
 
-    std::cout << csi::set_alternate_screen();
+    std::cout << csi::set_alternate_screen() << csi::hide_cursor();
 
     std::cerr << "Term width = " << term_size.ws_col;
     std::cerr << "Term height = " << term_size.ws_row << std::flush;
@@ -583,7 +593,7 @@ int main()
 
 
     std::cerr << "Bye!\n";
-    std::cout << csi::reset_alternate_screen();
+    std::cout << csi::show_cursor() << csi::reset_alternate_screen();
     tcsetattr( STDIN_FILENO, TCSANOW, &old_attr );
     std::cout << "Bye!\n";
 
