@@ -63,6 +63,11 @@ auto set_no_bright() -> std::string_view
 
 } // namespace csi
 
+bool starts_with( std::string_view a, std::string_view b )
+{
+    return a.size() >= b.size() && a.substr( 0, b.size() ) == b;
+}
+
 enum class Suit : uint8_t
 {
     None,
@@ -589,11 +594,25 @@ int main()
 
         std::string_view input( input_buf, s );
 
-        auto it = actions.find( input );
-        if ( it != actions.end() )
+        process_input:
+        auto it = actions.lower_bound( input );
+
+        if ( it->first == input )
         {
             it->second();
             continue;
+        }
+
+        if ( it != actions.begin() )
+        {
+            --it;
+
+            if ( starts_with( input, it->first ) )
+            {
+                it->second();
+                input = input.substr( it->first.size() );
+                goto process_input;
+            }
         }
 
         std::cerr << "Unhandled data of size = " << s << "\n";
