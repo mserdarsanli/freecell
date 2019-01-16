@@ -188,10 +188,10 @@ int cursor_col = 0;
 int selected_row = -1;
 int selected_col = -1;
 
+bool quit_confirmation = false;
 bool running = true;
 
 // TODO calculation for movable card count is not done yet
-// TODO add confirmation on exit
 // TODO add shortcut to send all available to foundations
 // TODO display available keys
 // TODO seed rng
@@ -480,10 +480,19 @@ void draw_frame()
         int row = top_row;
         int col = start_col + cascade_width * cursor_col;
 
-        // TODO recalculate row
         std::cout << csi::set_bg_color( 28 )
                   << csi::set_fg_color( 202 )
                   << csi::reset_cursor( row + 2 + 2 * cascades[ cursor_col ].size, col - 1 ) << u8"└─────┘";
+    }
+
+    if ( quit_confirmation )
+    {
+        std::cout << csi::set_bg_color( 196 ) << csi::set_fg_color( 255 )
+                  << csi::set_bright()
+                  << csi::reset_cursor( top_row + 15, start_col + 23 ) << "               "
+                  << csi::reset_cursor( top_row + 16, start_col + 23 ) << "  QUIT? (y/n)  "
+                  << csi::reset_cursor( top_row + 17, start_col + 23 ) << "               "
+                  << csi::set_no_bright();
     }
 
     std::cout << std::flush;
@@ -540,7 +549,23 @@ int main()
     std::map< std::string_view, std::function< void() > > actions;
     actions[ "q" ] = []()
     {
-        running = false;
+        quit_confirmation = true;
+    };
+
+    actions[ "y" ] = []()
+    {
+        if ( quit_confirmation )
+        {
+            running = false;
+        }
+    };
+
+    actions[ "n" ] = []()
+    {
+        if ( quit_confirmation )
+        {
+            quit_confirmation = false;
+        }
     };
 
     actions[ " " ] = []()
