@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <array>
+#include <functional>
 #include <iostream>
+#include <map>
 #include <string_view>
 
 #include <unistd.h>
@@ -180,6 +182,8 @@ int cursor_col = 0;
 
 int selected_row = -1;
 int selected_col = -1;
+
+bool running = true;
 
 void try_move()
 {
@@ -474,8 +478,8 @@ int main()
 
     std::cout << csi::set_alternate_screen() << csi::hide_cursor();
 
-    std::cerr << "Term width = " << term_size.ws_col;
-    std::cerr << "Term height = " << term_size.ws_row << std::flush;
+    std::cerr << "Term width = " << term_size.ws_col << "\n";
+    std::cerr << "Term height = " << term_size.ws_row << "\n";
 
     {
         std::array< Card, 52 > deck;
@@ -503,91 +507,106 @@ int main()
         }
     }
 
-    while ( true )
+    // This could be a static/constexpr map
+    std::map< std::string_view, std::function< void() > > actions;
+    actions[ "q" ] = []()
+    {
+        running = false;
+    };
+
+    actions[ " " ] = []()
+    {
+        if ( selected_row == -1 )
+        {
+            // Select non empty cells/cascades
+            if ( cursor_row == 0 && cells[ cursor_col ] || cursor_row == 1 && cascades[ cursor_col ].size )
+            {
+                selected_row = cursor_row;
+                selected_col = cursor_col;
+            }
+        }
+        else if ( selected_row == cursor_row && selected_col == cursor_col )
+        {
+            // Deselect
+            selected_row = -1;
+            selected_col = -1;
+        }
+        else
+        {
+            try_move();
+        }
+    };
+
+    actions[ "\r" ] = []()
+    {
+        // Enter, move item to foundation
+        try_move_to_foundation();
+    };
+
+    actions[ "\033[A" ] = []()
+    {
+        // Up
+        if ( cursor_row > 0 )
+        {
+            --cursor_row;
+            if ( cursor_col > 3 )
+            {
+                cursor_col = 3;
+            }
+        }
+    };
+    actions[ "\033[B" ] = []()
+    {
+        // Down
+        if ( cursor_row < 1 )
+        {
+            ++cursor_row;
+        }
+    };
+    actions[ "\033[D" ] = []()
+    {
+        // Left
+        if ( cursor_col > 0 )
+        {
+            --cursor_col;
+        }
+    };
+    actions[ "\033[C" ] = []()
+    {
+        // Right
+        if ( cursor_row == 0 && cursor_col < 3 || cursor_row == 1 && cursor_col < 7 )
+        {
+            ++cursor_col;
+        }
+    };
+
+    while ( running )
     {
         draw_frame();
 
         char input_buf[ 100 ];
         int s = read( STDIN_FILENO, input_buf, 100 );
 
+        std::string_view input( input_buf, s );
 
-        if ( s == 1 && input_buf[ 0 ] == 'q' )
+        auto it = actions.find( input );
+        if ( it != actions.end() )
         {
-            break;
+            it->second();
+            continue;
         }
-        else if ( s == 1 && input_buf[ 0 ] == ' ' )
+
+        std::cerr << "Unhandled data of size = " << s << "\n";
+        std::cerr << "Bytes:\n";
+        for ( int i = 0; i < s; ++i )
         {
-            if ( selected_row == -1 )
+            int val = static_cast< unsigned int >( static_cast< unsigned char >( input_buf[ i ] ) );
+            std::cerr << "  - " << val;
+            if ( isprint( val ) )
             {
-                // Select non empty cells/cascades
-                if ( cursor_row == 0 && cells[ cursor_col ] || cursor_row == 1 && cascades[ cursor_col ].size )
-                {
-                    selected_row = cursor_row;
-                    selected_col = cursor_col;
-                }
+                std::cerr << "[" << (char)val << "]";
             }
-            else if ( selected_row == cursor_row && selected_col == cursor_col )
-            {
-                // Deselect
-                selected_row = -1;
-                selected_col = -1;
-            }
-            else
-            {
-                try_move();
-            }
-        }
-        else if ( s == 1 && input_buf[ 0 ] == 13 )
-        {
-            // Enter, move item to foundation
-            try_move_to_foundation();
-        }
-        else if ( s == 3 && input_buf[ 0 ] == 033 && input_buf[ 1 ] == '[' && input_buf[ 2 ] == 'A' ) // Up
-        {
-            if ( cursor_row > 0 )
-            {
-                --cursor_row;
-                if ( cursor_col > 3 )
-                {
-                    cursor_col = 3;
-                }
-            }
-        }
-        else if ( s == 3 && input_buf[ 0 ] == 033 && input_buf[ 1 ] == '[' && input_buf[ 2 ] == 'B' ) // Down
-        {
-            if ( cursor_row < 1 )
-            {
-                ++cursor_row;
-            }
-        }
-        else if ( s == 3 && input_buf[ 0 ] == 033 && input_buf[ 1 ] == '[' && input_buf[ 2 ] == 'D' ) // Left
-        {
-            if ( cursor_col > 0 )
-            {
-                --cursor_col;
-            }
-        }
-        else if ( s == 3 && input_buf[ 0 ] == 033 && input_buf[ 1 ] == '[' && input_buf[ 2 ] == 'C' ) // Right
-        {
-            if ( cursor_row == 0 && cursor_col < 3 || cursor_row == 1 && cursor_col < 7 )
-            {
-                ++cursor_col;
-            }
-        }
-        else
-        {
-            std::cerr << "Unhandled data of size = " << s << "\n";
-            std::cerr << "Bytes:\n";
-            for ( int i = 0; i < s; ++i )
-            {
-                int val = static_cast< unsigned int >( static_cast< unsigned char >( input_buf[ i ] ) );
-                std::cerr << "  - " << val;
-                if ( isprint( val ) )
-                {
-                    std::cerr << "[" << (char)val << "]";
-                }
-                std::cerr << "\n";
-            }
+            std::cerr << "\n";
         }
     }
 
