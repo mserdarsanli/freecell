@@ -190,6 +190,11 @@ int selected_col = -1;
 
 bool running = true;
 
+// TODO calculation for movable card count is not done yet
+// TODO add confirmation on exit
+// TODO add shortcut to send all available to foundations
+// TODO display available keys
+// TODO seed rng
 void try_move()
 {
     // Tries to move from seleected to cursor
@@ -199,7 +204,26 @@ void try_move()
         Cascade &from_cascade = cascades[ selected_col ];
         Cascade &to_cascade = cascades[ cursor_col ];
 
-        // TODO handle when to_cascade is empty
+        // TODO whem moving to empty cascade, this moves all available items, which is not always desired
+        if ( to_cascade.size == 0 )
+        {
+            int num_cards = 1;
+
+            while ( num_cards < from_cascade.size && from_cascade.m_cards[ from_cascade.size - num_cards ].can_move_under( from_cascade.m_cards[ from_cascade.size - num_cards - 1 ] ) )
+            {
+                ++num_cards;
+            }
+
+            std::copy( from_cascade.m_cards.begin() + from_cascade.size - num_cards,
+                       from_cascade.m_cards.begin() + from_cascade.size,
+                       to_cascade.m_cards.begin() + to_cascade.size );
+
+            from_cascade.size -= num_cards;
+            to_cascade.size += num_cards;
+            selected_row = -1;
+            selected_col = -1;
+            return;
+        }
 
         // move from one cascade to another
         for ( int num_cards = 1; num_cards <= from_cascade.size ; ++num_cards )
