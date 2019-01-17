@@ -1,8 +1,10 @@
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <functional>
 #include <iostream>
 #include <map>
+#include <random>
 #include <string_view>
 
 #include <unistd.h>
@@ -191,9 +193,10 @@ int selected_col = -1;
 bool quit_confirmation = false;
 bool running = true;
 
+uint64_t game_seed;
+
 // TODO calculation for movable card count is not done yet
 // TODO add shortcut to send all available to foundations
-// TODO seed rng
 void try_move()
 {
     // Tries to move from seleected to cursor
@@ -498,13 +501,62 @@ void draw_frame()
               << csi::reset_cursor( top_row + 43, frame_start_col ) << "[arrow keys]: move cursor"
               << csi::reset_cursor( top_row + 44, frame_start_col ) << "[space]: select/deselect/move"
               << csi::reset_cursor( top_row + 45, frame_start_col ) << "[q]: quit"
-              << csi::reset_cursor( top_row + 46, frame_start_col ) << "[enter]: send to foundation";
+              << csi::reset_cursor( top_row + 46, frame_start_col ) << "[enter]: send to foundation"
+              // Right side
+              << csi::reset_cursor( top_row + 43, frame_start_col + 53 ) << "Seed = " << game_seed;
+
 
     std::cout << std::flush;
 }
 
-int main()
+const char usage[] = R"(
+usage: freecell [--seed 7-digit-num]
+)";
+
+int main( int argc, char* argv[] )
 {
+    for ( int i = 1; i < argc; )
+    {
+        using namespace std::literals;
+        if ( argv[ i ] == "--help"sv )
+        {
+            std::cerr << usage + 1;
+            return 0;
+        }
+
+        if ( argv[ i ] == "--seed"sv )
+        {
+            if ( i + 1 >= argc )
+            {
+                std::cerr << "--seed requires a value\n";
+                return 1;
+            }
+
+            std::string_view n = argv[ i + 1 ];
+            if ( n.size() != 7 || ! std::all_of( n.begin(), n.end(), ::isdigit ) || n[ 0 ] == '0' )
+            {
+                std::cerr << "Invalid value: " << n << "\n";
+                return 1;
+            }
+
+            game_seed = std::stoull( argv[ i + 1 ] );
+
+            i += 2;
+            continue;
+        }
+
+        std::cerr << "Unknown argument: " << argv[ i ] << "\n";
+        return 1;
+    }
+
+    if ( game_seed == 0 )
+    {
+        std::random_device rd;
+        do {
+            game_seed = rd();
+        } while ( game_seed < 1000000 || game_seed > 9999999 );
+    }
+
     ioctl(STDIN_FILENO, TIOCGWINSZ, &term_size);
 
     // Keep around for cleanup
@@ -536,7 +588,7 @@ int main()
             }
         }
 
-        std::random_shuffle( deck.begin(), deck.end() );
+        std::shuffle( deck.begin(), deck.end(), std::mt19937_64( game_seed ) );
 
         Cascade *cur_cascade = &cascades[ 0 ];
         for ( const Card &c : deck )
