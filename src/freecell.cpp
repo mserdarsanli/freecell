@@ -193,7 +193,6 @@ bool running = true;
 
 // TODO calculation for movable card count is not done yet
 // TODO add shortcut to send all available to foundations
-// TODO display available keys
 // TODO seed rng
 void try_move()
 {
@@ -494,6 +493,12 @@ void draw_frame()
                   << csi::reset_cursor( top_row + 17, start_col + 23 ) << "               "
                   << csi::set_no_bright();
     }
+
+    std::cout << csi::set_bg_color( 16 ) << csi::set_fg_color( 231 )
+              << csi::reset_cursor( top_row + 43, frame_start_col ) << "[arrow keys]: move cursor"
+              << csi::reset_cursor( top_row + 44, frame_start_col ) << "[space]: select/deselect/move"
+              << csi::reset_cursor( top_row + 45, frame_start_col ) << "[q]: quit"
+              << csi::reset_cursor( top_row + 46, frame_start_col ) << "[enter]: send to foundation";
 
     std::cout << std::flush;
 }
