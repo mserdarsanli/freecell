@@ -107,40 +107,16 @@ int get_color( const Suit &s )
 enum class Number : uint8_t
 {
     None,
-    Ace,
-    Two,
-    Three,
-    Four,
-    Five,
-    Six,
-    Seven,
-    Eight,
-    Nine,
-    Ten,
-    Jack,
-    Queen,
-    King,
+    Ace, Two, Three, Four, Five, Six, Seven, Eight, Nine, Ten, Jack, Queen, King,
 };
 
 std::string_view to_str( const Number &n )
 {
-    switch ( n )
-    {
-    case Number::None:   return " ?";
-    case Number::Ace:    return " A";
-    case Number::Two:    return " 2";
-    case Number::Three:  return " 3";
-    case Number::Four:   return " 4";
-    case Number::Five:   return " 5";
-    case Number::Six:    return " 6";
-    case Number::Seven:  return " 7";
-    case Number::Eight:  return " 8";
-    case Number::Nine:   return " 9";
-    case Number::Ten:    return "10";
-    case Number::Jack:   return " J";
-    case Number::Queen:  return " Q";
-    case Number::King:   return " K";
-    }
+    static const char* strs[] = {
+        " ?",
+        " A", " 2", " 3", " 4", " 5", " 6", " 7", " 8", " 9", "10", " J", " Q", " K",
+    };
+    return strs[ static_cast< int >( n ) ];
 };
 
 struct Card
