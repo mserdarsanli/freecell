@@ -302,8 +302,6 @@ bool try_move_to_foundation( const Card &c )
 
 void try_move_to_foundation()
 {
-    // TODO bug if selected element is moved to foundation?
-
     if ( cursor_row == 0 )
     {
         if ( try_move_to_foundation( cells[ cursor_col ] ) )
@@ -322,6 +320,13 @@ void try_move_to_foundation()
         if ( try_move_to_foundation( cascade.m_cards[ cascade.size - 1 ] ) )
         {
             --cascade.size;
+
+            if ( selected_row == 1 && selected_col == cursor_col )
+            {
+                // Deselect if selected element is sent to foundation
+                selected_row = -1;
+                selected_col = -1;
+            }
         }
     }
 }
