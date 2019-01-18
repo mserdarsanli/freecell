@@ -425,7 +425,18 @@ void draw_frame()
         for ( int cell_idx = 0; cell_idx < 4; ++cell_idx )
         {
             int attrs = ( foundations[ cell_idx ] ? 0 : CardAttr::EmptySlot );
-            draw_card( foundations[ cell_idx ], frame_start_row + 1, frame_start_col + frame_width - 7 - cell_idx * 7, attrs );
+            int row = frame_start_row + 1;
+            int col = frame_start_col + frame_width - 7 - cell_idx * 7;
+            draw_card( foundations[ cell_idx ], row, col, attrs );
+
+            if ( attrs & CardAttr::EmptySlot )
+            {
+                Suit s = static_cast< Suit >( cell_idx + 1 );
+                std::cout << csi::reset_cursor( row + 1, col + 2 )
+                          << csi::set_bg_color( 247 )
+                          << csi::set_fg_color( get_color( s ) )
+                          << to_str( s );
+            }
         }
     }
 
