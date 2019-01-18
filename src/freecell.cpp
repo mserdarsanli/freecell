@@ -518,10 +518,13 @@ Key extract_key( std::string_view &input )
     case ' ':           input = input.substr( 1 ); return Key::Space;
     case '\r':          input = input.substr( 1 ); return Key::Enter;
     case '\033':
-        if ( input[ 1 ] == '[' && input[ 2 ] == 'A' ) { input = input.substr( 3 ); return Key::ArrowUp; }
-        if ( input[ 1 ] == '[' && input[ 2 ] == 'B' ) { input = input.substr( 3 ); return Key::ArrowDown; }
-        if ( input[ 1 ] == '[' && input[ 2 ] == 'C' ) { input = input.substr( 3 ); return Key::ArrowRight; }
-        if ( input[ 1 ] == '[' && input[ 2 ] == 'D' ) { input = input.substr( 3 ); return Key::ArrowLeft; }
+        if ( input.size() >= 3 && input[ 1 ] == '[' )
+        {
+            if ( input[ 2 ] == 'A' ) { input = input.substr( 3 ); return Key::ArrowUp; }
+            if ( input[ 2 ] == 'B' ) { input = input.substr( 3 ); return Key::ArrowDown; }
+            if ( input[ 2 ] == 'C' ) { input = input.substr( 3 ); return Key::ArrowRight; }
+            if ( input[ 2 ] == 'D' ) { input = input.substr( 3 ); return Key::ArrowLeft; }
+        }
     }
 
     // Unknown char sequence
