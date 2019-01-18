@@ -404,6 +404,10 @@ void draw_frame()
                        row == frame_height - 1 ? u8"┘" : "│" );
     }
 
+    std::cout << csi::set_bg_color( 28 ) << csi::set_fg_color( 42 )
+              << csi::reset_cursor( frame_start_row + 2, frame_start_col + 29 ) << " F R E E "
+              << csi::reset_cursor( frame_start_row + 3, frame_start_col + 29 ) << " C E L L ";
+
     {
         for ( int cell_idx = 0; cell_idx < 4; ++cell_idx )
         {
