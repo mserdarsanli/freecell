@@ -454,7 +454,7 @@ void draw_frame()
     const int top_row = frame_start_row + 6;
     const int start_col = frame_start_col + 3;
 
-    for ( size_t c_idx = 0; c_idx < 8; ++c_idx ) // TODO range indexed
+    for ( size_t c_idx = 0; c_idx < 8; ++c_idx )
     {
         std::cout << csi::set_bg_color( 255 ); // white bg for cards
 
@@ -469,7 +469,7 @@ void draw_frame()
         }
         else
         {
-            for ( size_t card_idx = 0; card_idx < cascade.size ; ++card_idx ) // TODO range indexed
+            for ( size_t card_idx = 0; card_idx < cascade.size ; ++card_idx )
             {
                 const Card &card = cascade.m_cards[ card_idx ];
 
