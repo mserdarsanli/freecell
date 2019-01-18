@@ -83,25 +83,25 @@ std::string_view to_str( const Suit &s )
 {
     switch ( s )
     {
-    case Suit::None:      return "?";
     case Suit::Hearts:    return u8"♥";
     case Suit::Diamonds:  return u8"♦️";
     case Suit::Clubs:     return u8"♣";
     case Suit::Spades:    return u8"♠️";
+    default:              return "?";
     }
-};
+}
 
 int get_color( const Suit &s )
 {
     switch ( s )
     {
-    case Suit::None:      return 0;
     case Suit::Hearts:    return 196;
     case Suit::Diamonds:  return 196;
     case Suit::Clubs:     return 232;
     case Suit::Spades:    return 232;
+    default:              return 0;
     }
-};
+}
 
 enum class Number : uint8_t
 {
@@ -116,7 +116,7 @@ std::string_view to_str( const Number &n )
         " A", " 2", " 3", " 4", " 5", " 6", " 7", " 8", " 9", "10", " J", " Q", " K",
     };
     return strs[ static_cast< int >( n ) ];
-};
+}
 
 struct Card
 {
@@ -429,7 +429,7 @@ void draw_frame()
     const int top_row = frame_start_row + 6;
     const int start_col = frame_start_col + 3;
 
-    for ( size_t c_idx = 0; c_idx < 8; ++c_idx )
+    for ( int c_idx = 0; c_idx < 8; ++c_idx )
     {
         std::cout << csi::set_bg_color( 255 ); // white bg for cards
 
@@ -444,7 +444,7 @@ void draw_frame()
         }
         else
         {
-            for ( size_t card_idx = 0; card_idx < cascade.size ; ++card_idx )
+            for ( int card_idx = 0; card_idx < cascade.size ; ++card_idx )
             {
                 const Card &card = cascade.m_cards[ card_idx ];
 
@@ -453,7 +453,7 @@ void draw_frame()
                 attrs |= ( card_idx > 0 ? CardAttr::HasCardBelow : 0 );
                 attrs |= ( card_idx == cascade.size - 1 && selected_row == 1 && selected_col == c_idx ? CardAttr::Selected : 0 );
 
-                draw_card( cascade.m_cards[ card_idx ], row + 2 * card_idx, col, attrs );
+                draw_card( card, row + 2 * card_idx, col, attrs );
             }
         }
     }
@@ -567,7 +567,7 @@ void process_key( Key k )
         if ( selected_row == -1 )
         {
             // Select non empty cells/cascades
-            if ( cursor_row == 0 && cells[ cursor_col ] || cursor_row == 1 && cascades[ cursor_col ].size )
+            if ( ( cursor_row == 0 && cells[ cursor_col ] ) || ( cursor_row == 1 && cascades[ cursor_col ].size ) )
             {
                 selected_row = cursor_row;
                 selected_col = cursor_col;
@@ -611,10 +611,12 @@ void process_key( Key k )
         }
         return;
     case Key::ArrowRight:
-        if ( cursor_row == 0 && cursor_col < 3 || cursor_row == 1 && cursor_col < 7 )
+        if ( ( cursor_row == 0 && cursor_col < 3 ) || ( cursor_row == 1 && cursor_col < 7 ) )
         {
             ++cursor_col;
         }
+        return;
+    default:
         return;
     }
 }
