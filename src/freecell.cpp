@@ -4,7 +4,6 @@
 #include <csignal>
 #include <functional>
 #include <iostream>
-#include <map>
 #include <random>
 #include <string_view>
 
@@ -495,6 +494,131 @@ const char usage[] = R"(
 usage: freecell [--seed 7-digit-num]
 )";
 
+enum class Key
+{
+    Unknown,
+    Q,
+    Y,
+    N,
+    Space,
+    Enter,
+    ArrowLeft,
+    ArrowRight,
+    ArrowUp,
+    ArrowDown,
+};
+
+Key extract_key( std::string_view &input )
+{
+    switch ( input[ 0 ] )
+    {
+    case 'q': case 'Q': input = input.substr( 1 ); return Key::Q;
+    case 'y': case 'Y': input = input.substr( 1 ); return Key::Y;
+    case 'n': case 'N': input = input.substr( 1 ); return Key::N;
+    case ' ':           input = input.substr( 1 ); return Key::Space;
+    case '\r':          input = input.substr( 1 ); return Key::Enter;
+    case '\033':
+        if ( input[ 1 ] == '[' && input[ 2 ] == 'A' ) { input = input.substr( 3 ); return Key::ArrowUp; }
+        if ( input[ 1 ] == '[' && input[ 2 ] == 'B' ) { input = input.substr( 3 ); return Key::ArrowDown; }
+        if ( input[ 1 ] == '[' && input[ 2 ] == 'C' ) { input = input.substr( 3 ); return Key::ArrowRight; }
+        if ( input[ 1 ] == '[' && input[ 2 ] == 'D' ) { input = input.substr( 3 ); return Key::ArrowLeft; }
+    }
+
+    // Unknown char sequence
+    std::cerr << "Unhandled data of size = " << input.size() << "\n";
+    std::cerr << "Bytes:\n";
+    for ( char c : input )
+    {
+        int val = static_cast< unsigned int >( static_cast< unsigned char >( c ) );
+        std::cerr << "  - " << val;
+        if ( isprint( val ) )
+        {
+            std::cerr << "[" << (char)val << "]";
+        }
+        std::cerr << "\n";
+    }
+    input = std::string_view();
+    return Key::Unknown;
+}
+
+void process_key( Key k )
+{
+    if ( quit_confirmation )
+    {
+        switch ( k )
+        {
+        case Key::Y:
+            running = false;
+            return;
+        case Key::N:
+            quit_confirmation = false;
+            return;
+        default:
+            return;
+        }
+    }
+
+    switch ( k )
+    {
+    case Key::Q:
+        quit_confirmation = true;
+        return;
+    case Key::Space:
+        if ( selected_row == -1 )
+        {
+            // Select non empty cells/cascades
+            if ( cursor_row == 0 && cells[ cursor_col ] || cursor_row == 1 && cascades[ cursor_col ].size )
+            {
+                selected_row = cursor_row;
+                selected_col = cursor_col;
+            }
+        }
+        else if ( selected_row == cursor_row && selected_col == cursor_col )
+        {
+            // Deselect
+            selected_row = -1;
+            selected_col = -1;
+        }
+        else
+        {
+            try_move();
+        }
+        return;
+    case Key::Enter:
+        // Enter, move item to foundation
+        try_move_to_foundation();
+        return;
+    case Key::ArrowUp:
+        if ( cursor_row > 0 )
+        {
+            --cursor_row;
+            if ( cursor_col > 3 )
+            {
+                cursor_col = 3;
+            }
+        }
+        return;
+    case Key::ArrowDown:
+        if ( cursor_row < 1 )
+        {
+            ++cursor_row;
+        }
+        return;
+    case Key::ArrowLeft:
+        if ( cursor_col > 0 )
+        {
+            --cursor_col;
+        }
+        return;
+    case Key::ArrowRight:
+        if ( cursor_row == 0 && cursor_col < 3 || cursor_row == 1 && cursor_col < 7 )
+        {
+            ++cursor_col;
+        }
+        return;
+    }
+}
+
 int main( int argc, char* argv[] )
 {
     for ( int i = 1; i < argc; )
@@ -584,95 +708,6 @@ int main( int argc, char* argv[] )
         }
     }
 
-    // This could be a static/constexpr map
-    std::map< std::string_view, std::function< void() > > actions;
-    actions[ "q" ] = []()
-    {
-        quit_confirmation = true;
-    };
-
-    actions[ "y" ] = []()
-    {
-        if ( quit_confirmation )
-        {
-            running = false;
-        }
-    };
-
-    actions[ "n" ] = []()
-    {
-        if ( quit_confirmation )
-        {
-            quit_confirmation = false;
-        }
-    };
-
-    actions[ " " ] = []()
-    {
-        if ( selected_row == -1 )
-        {
-            // Select non empty cells/cascades
-            if ( cursor_row == 0 && cells[ cursor_col ] || cursor_row == 1 && cascades[ cursor_col ].size )
-            {
-                selected_row = cursor_row;
-                selected_col = cursor_col;
-            }
-        }
-        else if ( selected_row == cursor_row && selected_col == cursor_col )
-        {
-            // Deselect
-            selected_row = -1;
-            selected_col = -1;
-        }
-        else
-        {
-            try_move();
-        }
-    };
-
-    actions[ "\r" ] = []()
-    {
-        // Enter, move item to foundation
-        try_move_to_foundation();
-    };
-
-    actions[ "\033[A" ] = []()
-    {
-        // Up
-        if ( cursor_row > 0 )
-        {
-            --cursor_row;
-            if ( cursor_col > 3 )
-            {
-                cursor_col = 3;
-            }
-        }
-    };
-    actions[ "\033[B" ] = []()
-    {
-        // Down
-        if ( cursor_row < 1 )
-        {
-            ++cursor_row;
-        }
-    };
-    actions[ "\033[D" ] = []()
-    {
-        // Left
-        if ( cursor_col > 0 )
-        {
-            --cursor_col;
-        }
-    };
-    actions[ "\033[C" ] = []()
-    {
-        // Right
-        if ( cursor_row == 0 && cursor_col < 3 || cursor_row == 1 && cursor_col < 7 )
-        {
-            ++cursor_col;
-        }
-    };
-
     signal( SIGWINCH, []( int )
     {
         ioctl(STDIN_FILENO, TIOCGWINSZ, &term_size);
@@ -688,38 +723,10 @@ int main( int argc, char* argv[] )
 
         std::string_view input( input_buf, s );
 
-        process_input:
-        auto it = actions.lower_bound( input );
-
-        if ( it->first == input )
+        while ( input.size() )
         {
-            it->second();
-            continue;
-        }
-
-        if ( it != actions.begin() )
-        {
-            --it;
-
-            if ( starts_with( input, it->first ) )
-            {
-                it->second();
-                input = input.substr( it->first.size() );
-                goto process_input;
-            }
-        }
-
-        std::cerr << "Unhandled data of size = " << s << "\n";
-        std::cerr << "Bytes:\n";
-        for ( int i = 0; i < s; ++i )
-        {
-            int val = static_cast< unsigned int >( static_cast< unsigned char >( input_buf[ i ] ) );
-            std::cerr << "  - " << val;
-            if ( isprint( val ) )
-            {
-                std::cerr << "[" << (char)val << "]";
-            }
-            std::cerr << "\n";
+            std::cerr << "Processing input of size = " << input.size() << "\n";
+            process_key( extract_key( input ) );
         }
     }
 
