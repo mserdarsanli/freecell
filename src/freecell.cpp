@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <csignal>
 #include <functional>
 #include <iostream>
 #include <map>
@@ -183,7 +184,7 @@ std::ostream& operator<<( std::ostream &out, const Card &c )
     return out;
 }
 
-struct winsize term_size; // TODO react to SIGWINCH
+struct winsize term_size;
 int cursor_row = 1;
 int cursor_col = 0;
 
@@ -690,6 +691,12 @@ int main( int argc, char* argv[] )
             ++cursor_col;
         }
     };
+
+    signal( SIGWINCH, []( int )
+    {
+        ioctl(STDIN_FILENO, TIOCGWINSZ, &term_size);
+        draw_frame();
+    });
 
     while ( running )
     {
