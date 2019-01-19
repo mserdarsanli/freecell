@@ -383,7 +383,7 @@ void draw_frame()
 
     const int frame_height = 48;
     const int frame_width = 8 * cascade_width + 3;
-    const int frame_start_row = 10;
+    const int frame_start_row = 1;
     const int frame_start_col = ( term_size.ws_col - frame_width ) / 2;
 
     // Draw frame
