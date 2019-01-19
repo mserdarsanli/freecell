@@ -233,6 +233,30 @@ Cascade& to_cascade()
     return game->cascades[ cursor_col ];
 }
 
+int max_movable_cards( bool moving_to_empty_cascade )
+{
+    int empty_cascade_cnt = 0;
+    for ( int i = 0; i < 8; ++i )
+    {
+        empty_cascade_cnt += ( game->cascades[ i ].size == 0 );
+    }
+
+    int empty_cell_cnt = 0;
+    for ( int i = 0; i < 4; ++i )
+    {
+        empty_cell_cnt += ( ! game->cells[ i ] );
+    }
+
+    if ( moving_to_empty_cascade )
+    {
+        return ( 1 << ( empty_cascade_cnt - 1 ) ) * ( empty_cell_cnt + 1 );
+    }
+    else
+    {
+        return ( 1 << ( empty_cascade_cnt ) ) * ( empty_cell_cnt + 1 );
+    }
+}
+
 // TODO calculation for movable card count is not done yet
 // TODO add shortcut to send all available to foundations
 void try_move()
@@ -244,14 +268,20 @@ void try_move()
         // TODO whem moving to empty cascade, this moves all available items, which is not always desired
         if ( to_cascade().size == 0 )
         {
-            game = push_state();
-
             int num_cards = 1;
 
             while ( num_cards < from_cascade().size && from_cascade().m_cards[ from_cascade().size - num_cards ].can_move_under( from_cascade().m_cards[ from_cascade().size - num_cards - 1 ] ) )
             {
                 ++num_cards;
             }
+
+            if ( num_cards > max_movable_cards( true ) )
+            {
+                return;
+            }
+
+            game = push_state();
+
 
             std::copy( from_cascade().m_cards.begin() + from_cascade().size - num_cards,
                        from_cascade().m_cards.begin() + from_cascade().size,
@@ -273,6 +303,11 @@ void try_move()
                 {
                     break;
                 }
+            }
+
+            if ( num_cards > max_movable_cards( false ) )
+            {
+                return;
             }
 
             if ( from_cascade().m_cards[ from_cascade().size - num_cards ].can_move_under( to_cascade().m_cards[ to_cascade().size - 1 ] ) )
