@@ -184,6 +184,7 @@ int selected_row = -1;
 int selected_col = -1;
 
 bool quit_confirmation = false;
+bool help_screen = false;
 bool running = true;
 
 uint64_t game_seed;
@@ -510,14 +511,30 @@ void draw_frame()
                   << csi::set_no_bright();
     }
 
-    std::cout << csi::set_bg_color( 16 ) << csi::set_fg_color( 231 )
-              << csi::reset_cursor( top_row + 43, frame_start_col ) << "[arrow keys]: move cursor"
-              << csi::reset_cursor( top_row + 44, frame_start_col ) << "[space]: select/deselect/move"
-              << csi::reset_cursor( top_row + 45, frame_start_col ) << "[q]: quit"
-              << csi::reset_cursor( top_row + 46, frame_start_col ) << "[enter]: send to foundation"
-              // Right side
-              << csi::reset_cursor( top_row + 43, frame_start_col + 53 ) << "Seed = " << game_seed;
+    if ( help_screen )
+    {
+        static std::array< const char*, 9 > help_screen_text = {
+            "                                           ",
+            "        Freecell for Terminal Help         ",
+            "                                           ",
+            "  [F1]: Toggle help screen                 ",
+            "  [arrow keys]: move cursor                ",
+            "  [space]: select/deselect/move card       ",
+            "  [enter]: move card to foundation         ",
+            "  [q]: quit                                ",
+            "                                           ",
+        };
 
+        std::cout << csi::set_bg_color( 235 ) << csi::set_fg_color( 255 );
+        for ( size_t i = 0; i < help_screen_text.size(); ++i )
+        {
+            std::cout << csi::reset_cursor( top_row + 8 + i, start_col + 9 ) << help_screen_text[ i ];
+        }
+    }
+
+    std::cout << csi::set_bg_color( 16 ) << csi::set_fg_color( 231 )
+              << csi::reset_cursor( top_row + 42, frame_start_col ) << "[F1]: help"
+              << csi::reset_cursor( top_row + 42, frame_start_col + 53 ) << "Seed = " << game_seed;
 
     std::cout << std::flush;
 }
@@ -538,6 +555,7 @@ enum class Key
     ArrowRight,
     ArrowUp,
     ArrowDown,
+    F1,
 };
 
 Key extract_key( std::string_view &input )
@@ -550,13 +568,11 @@ Key extract_key( std::string_view &input )
     case ' ':           input = input.substr( 1 ); return Key::Space;
     case '\r':          input = input.substr( 1 ); return Key::Enter;
     case '\033':
-        if ( input.size() >= 3 && input[ 1 ] == '[' )
-        {
-            if ( input[ 2 ] == 'A' ) { input = input.substr( 3 ); return Key::ArrowUp; }
-            if ( input[ 2 ] == 'B' ) { input = input.substr( 3 ); return Key::ArrowDown; }
-            if ( input[ 2 ] == 'C' ) { input = input.substr( 3 ); return Key::ArrowRight; }
-            if ( input[ 2 ] == 'D' ) { input = input.substr( 3 ); return Key::ArrowLeft; }
-        }
+        if ( input.size() >= 3 && input.substr( 0, 3 ) == "\033[A"   ) { input = input.substr( 3 ); return Key::ArrowUp; }
+        if ( input.size() >= 3 && input.substr( 0, 3 ) == "\033[B"   ) { input = input.substr( 3 ); return Key::ArrowDown; }
+        if ( input.size() >= 3 && input.substr( 0, 3 ) == "\033[C"   ) { input = input.substr( 3 ); return Key::ArrowRight; }
+        if ( input.size() >= 3 && input.substr( 0, 3 ) == "\033[D"   ) { input = input.substr( 3 ); return Key::ArrowLeft; }
+        if ( input.size() >= 5 && input.substr( 0, 5 ) == "\033[11~" ) { input = input.substr( 5 ); return Key::F1; }
     }
 
     // Unknown char sequence
@@ -593,10 +609,22 @@ void process_key( Key k )
         }
     }
 
+    if ( help_screen )
+    {
+        if ( k == Key::F1 )
+        {
+            help_screen = false;
+        }
+        return;
+    }
+
     switch ( k )
     {
     case Key::Q:
         quit_confirmation = true;
+        return;
+    case Key::F1:
+        help_screen = true;
         return;
     case Key::Space:
         if ( selected_row == -1 )
