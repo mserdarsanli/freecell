@@ -157,16 +157,6 @@ struct Card
     }
 };
 
-struct Cascade
-{
-    std::array< Card, 20 > m_cards; // Max number of initial cascade + 12 more cards + null
-    int size = 0;
-};
-
-std::array< Cascade, 8 > cascades;
-std::array< Card, 4 > cells;
-std::array< Card, 4 > foundations;
-
 std::ostream& operator<<( std::ostream &out, const Card &c )
 {
     out << csi::set_bright()
@@ -174,6 +164,50 @@ std::ostream& operator<<( std::ostream &out, const Card &c )
         << csi::set_no_bright();
 
     return out;
+}
+
+struct Cascade
+{
+    std::array< Card, 20 > m_cards; // Max number of initial cascade + 12 more cards + null
+    int size = 0;
+};
+
+struct GameState
+{
+    std::array< Cascade, 8 > cascades;
+    std::array< Card, 4 > cells;
+    std::array< Card, 4 > foundations;
+    bool in_history = false; // Whether we can undo to this state
+};
+
+// Allows for N-1 levels of undo
+std::array< GameState, 100 > game_states;
+GameState *game = &game_states[ 0 ];
+
+GameState* push_state()
+{
+    int cur_idx = game - &game_states[ 0 ];
+
+    GameState *new_st = &game_states[ ( cur_idx + 1 ) % game_states.size() ];
+    GameState *end    = &game_states[ ( cur_idx + 2 ) % game_states.size() ];
+
+    *new_st = *game;
+    end->in_history = false;
+    return new_st;
+}
+
+GameState* get_previous_state()
+{
+    int cur_idx = game - &game_states[ 0 ];
+
+    GameState *prev_st = &game_states[ ( cur_idx + game_states.size() - 1 ) % game_states.size() ];
+
+    if ( prev_st->in_history )
+    {
+        return prev_st;
+    }
+
+    return nullptr;
 }
 
 struct winsize term_size;
@@ -189,6 +223,16 @@ bool running = true;
 
 uint64_t game_seed;
 
+Cascade& from_cascade()
+{
+    return game->cascades[ selected_col ];
+}
+
+Cascade& to_cascade()
+{
+    return game->cascades[ cursor_col ];
+}
+
 // TODO calculation for movable card count is not done yet
 // TODO add shortcut to send all available to foundations
 void try_move()
@@ -197,49 +241,50 @@ void try_move()
 
     if ( selected_row == 1 && cursor_row == 1 )
     {
-        Cascade &from_cascade = cascades[ selected_col ];
-        Cascade &to_cascade = cascades[ cursor_col ];
-
         // TODO whem moving to empty cascade, this moves all available items, which is not always desired
-        if ( to_cascade.size == 0 )
+        if ( to_cascade().size == 0 )
         {
+            game = push_state();
+
             int num_cards = 1;
 
-            while ( num_cards < from_cascade.size && from_cascade.m_cards[ from_cascade.size - num_cards ].can_move_under( from_cascade.m_cards[ from_cascade.size - num_cards - 1 ] ) )
+            while ( num_cards < from_cascade().size && from_cascade().m_cards[ from_cascade().size - num_cards ].can_move_under( from_cascade().m_cards[ from_cascade().size - num_cards - 1 ] ) )
             {
                 ++num_cards;
             }
 
-            std::copy( from_cascade.m_cards.begin() + from_cascade.size - num_cards,
-                       from_cascade.m_cards.begin() + from_cascade.size,
-                       to_cascade.m_cards.begin() + to_cascade.size );
+            std::copy( from_cascade().m_cards.begin() + from_cascade().size - num_cards,
+                       from_cascade().m_cards.begin() + from_cascade().size,
+                       to_cascade().m_cards.begin() + to_cascade().size );
 
-            from_cascade.size -= num_cards;
-            to_cascade.size += num_cards;
+            from_cascade().size -= num_cards;
+            to_cascade().size += num_cards;
             selected_row = -1;
             selected_col = -1;
             return;
         }
 
         // move from one cascade to another
-        for ( int num_cards = 1; num_cards <= from_cascade.size ; ++num_cards )
+        for ( int num_cards = 1; num_cards <= from_cascade().size ; ++num_cards )
         {
             if ( num_cards > 1 )
             {
-                if ( ! from_cascade.m_cards[ from_cascade.size - num_cards + 1 ].can_move_under( from_cascade.m_cards[ from_cascade.size - num_cards ] ) )
+                if ( ! from_cascade().m_cards[ from_cascade().size - num_cards + 1 ].can_move_under( from_cascade().m_cards[ from_cascade().size - num_cards ] ) )
                 {
                     break;
                 }
             }
 
-            if ( from_cascade.m_cards[ from_cascade.size - num_cards ].can_move_under( to_cascade.m_cards[ to_cascade.size - 1 ] ) )
+            if ( from_cascade().m_cards[ from_cascade().size - num_cards ].can_move_under( to_cascade().m_cards[ to_cascade().size - 1 ] ) )
             {
-                std::copy( from_cascade.m_cards.begin() + from_cascade.size - num_cards,
-                           from_cascade.m_cards.begin() + from_cascade.size,
-                           to_cascade.m_cards.begin() + to_cascade.size );
+                game = push_state();
 
-                from_cascade.size -= num_cards;
-                to_cascade.size += num_cards;
+                std::copy( from_cascade().m_cards.begin() + from_cascade().size - num_cards,
+                           from_cascade().m_cards.begin() + from_cascade().size,
+                           to_cascade().m_cards.begin() + to_cascade().size );
+
+                from_cascade().size -= num_cards;
+                to_cascade().size += num_cards;
                 selected_row = -1;
                 selected_col = -1;
                 break;
@@ -248,25 +293,25 @@ void try_move()
     }
     else if ( selected_row == 1 && cursor_row == 0 )
     {
-        if ( cells[ cursor_col ] )
+        if ( game->cells[ cursor_col ] )
         {
             return;
         }
 
-        Cascade &from_cascade = cascades[ selected_col ];
-        cells[ cursor_col ] = from_cascade.m_cards[ from_cascade.size-- - 1 ];
+        game = push_state();
+        game->cells[ cursor_col ] = from_cascade().m_cards[ from_cascade().size-- - 1 ];
         selected_row = -1;
         selected_col = -1;
         return;
     }
     else if ( selected_row == 0 && cursor_row == 1 )
     {
-        Cascade &to_cascade = cascades[ cursor_col ];
-
-        if ( to_cascade.size == 0 || cells[ selected_col ].can_move_under( to_cascade.m_cards[ to_cascade.size - 1 ] ) )
+        if ( to_cascade().size == 0 || game->cells[ selected_col ].can_move_under( to_cascade().m_cards[ to_cascade().size - 1 ] ) )
         {
-            to_cascade.m_cards[ to_cascade.size++ ] = cells[ selected_col ];
-            cells[ selected_col ].m_suit = Suit::None;
+            game = push_state();
+
+            to_cascade().m_cards[ to_cascade().size++ ] = game->cells[ selected_col ];
+            game->cells[ selected_col ].m_suit = Suit::None;
             selected_row = -1;
             selected_col = -1;
             return;
@@ -281,12 +326,11 @@ bool try_move_to_foundation( const Card &c )
         return false;
     }
 
-    Card &foundation_card = foundations[ c.foundation_id() ];
-
     if ( c.m_number == Number::Ace
-      || static_cast< int >( c.m_number ) == static_cast< int >( foundation_card.m_number ) + 1 )
+      || static_cast< int >( c.m_number ) == static_cast< int >( game->foundations[ c.foundation_id() ].m_number ) + 1 )
     {
-        foundation_card = c;
+        game = push_state();
+        game->foundations[ c.foundation_id() ] = c;
         return true;
     }
 
@@ -297,22 +341,21 @@ void try_move_to_foundation()
 {
     if ( cursor_row == 0 )
     {
-        if ( try_move_to_foundation( cells[ cursor_col ] ) )
+        if ( try_move_to_foundation( game->cells[ cursor_col ] ) )
         {
-            cells[ cursor_col ].m_suit = Suit::None;
+            game->cells[ cursor_col ].m_suit = Suit::None;
         }
     }
     else // Cursor row == 1
     {
-        Cascade &cascade = cascades[ cursor_col ];
-        if ( cascade.size == 0 )
+        if ( game->cascades[ cursor_col ].size == 0 )
         {
             return;
         }
 
-        if ( try_move_to_foundation( cascade.m_cards[ cascade.size - 1 ] ) )
+        if ( try_move_to_foundation( game->cascades[ cursor_col ].m_cards[ game->cascades[ cursor_col ].size - 1 ] ) )
         {
-            --cascade.size;
+            game->cascades[ cursor_col ].size--;
 
             if ( selected_row == 1 && selected_col == cursor_col )
             {
@@ -429,8 +472,10 @@ void draw_frame()
     {
         for ( int cell_idx = 0; cell_idx < 4; ++cell_idx )
         {
-            int attrs = ( cells[ cell_idx ] ? 0 : CardAttr::EmptySlot ) | ( selected_row == 0 && selected_col == cell_idx ? CardAttr::Selected : 0 );
-            draw_card( cells[ cell_idx ], frame_start_row + 1, frame_start_col +  2 + 7 * cell_idx, attrs );
+            int attrs = 0;
+            attrs |= ( game->cells[ cell_idx ] ? 0 : CardAttr::EmptySlot );
+            attrs |= ( selected_row == 0 && selected_col == cell_idx ? CardAttr::Selected : 0 );
+            draw_card( game->cells[ cell_idx ], frame_start_row + 1, frame_start_col +  2 + 7 * cell_idx, attrs );
         }
 
         if ( cursor_row == 0 )
@@ -442,10 +487,10 @@ void draw_frame()
 
         for ( int cell_idx = 0; cell_idx < 4; ++cell_idx )
         {
-            int attrs = ( foundations[ cell_idx ] ? 0 : CardAttr::EmptySlot );
+            int attrs = ( game->foundations[ cell_idx ] ? 0 : CardAttr::EmptySlot );
             int row = frame_start_row + 1;
             int col = frame_start_col + frame_width - 7 - cell_idx * 7;
-            draw_card( foundations[ cell_idx ], row, col, attrs );
+            draw_card( game->foundations[ cell_idx ], row, col, attrs );
 
             if ( attrs & CardAttr::EmptySlot )
             {
@@ -466,7 +511,7 @@ void draw_frame()
     {
         std::cout << csi::set_bg_color( 255 ); // white bg for cards
 
-        const Cascade &cascade = cascades[ c_idx ];
+        const Cascade &cascade = game->cascades[ c_idx ];
 
         int row = top_row;
         int col = start_col + cascade_width * c_idx;
@@ -498,7 +543,7 @@ void draw_frame()
 
         std::cout << csi::set_bg_color( 28 )
                   << csi::set_fg_color( 202 )
-                  << csi::reset_cursor( row + 2 + 2 * cascades[ cursor_col ].size, col - 1 ) << u8"└─────┘";
+                  << csi::reset_cursor( row + 2 + 2 * game->cascades[ cursor_col ].size, col - 1 ) << u8"└─────┘";
     }
 
     if ( quit_confirmation )
@@ -513,7 +558,7 @@ void draw_frame()
 
     if ( help_screen )
     {
-        static std::array< const char*, 9 > help_screen_text = {
+        static std::array< const char*, 10 > help_screen_text = {
             "                                           ",
             "        Freecell for Terminal Help         ",
             "                                           ",
@@ -521,6 +566,7 @@ void draw_frame()
             "  [arrow keys]: move cursor                ",
             "  [space]: select/deselect/move card       ",
             "  [enter]: move card to foundation         ",
+            "  [u]: undo last move                      ",
             "  [q]: quit                                ",
             "                                           ",
         };
@@ -547,6 +593,7 @@ enum class Key
 {
     Unknown,
     Q,
+    U,
     Y,
     N,
     Space,
@@ -563,6 +610,7 @@ Key extract_key( std::string_view &input )
     switch ( input[ 0 ] )
     {
     case 'q': case 'Q': input = input.substr( 1 ); return Key::Q;
+    case 'u': case 'U': input = input.substr( 1 ); return Key::U;
     case 'y': case 'Y': input = input.substr( 1 ); return Key::Y;
     case 'n': case 'N': input = input.substr( 1 ); return Key::N;
     case ' ':           input = input.substr( 1 ); return Key::Space;
@@ -620,6 +668,18 @@ void process_key( Key k )
 
     switch ( k )
     {
+    case Key::U:
+    {
+        GameState *prev_state = get_previous_state();
+        if ( prev_state )
+        {
+            game->in_history = false;
+            game = prev_state;
+            selected_row = -1;
+            selected_col = -1;
+        }
+        return;
+    }
     case Key::Q:
         quit_confirmation = true;
         return;
@@ -630,7 +690,7 @@ void process_key( Key k )
         if ( selected_row == -1 )
         {
             // Select non empty cells/cascades
-            if ( ( cursor_row == 0 && cells[ cursor_col ] ) || ( cursor_row == 1 && cascades[ cursor_col ].size ) )
+            if ( ( cursor_row == 0 && game->cells[ cursor_col ] ) || ( cursor_row == 1 && game->cascades[ cursor_col ].size ) )
             {
                 selected_row = cursor_row;
                 selected_col = cursor_col;
@@ -761,16 +821,17 @@ int main( int argc, char* argv[] )
 
         std::shuffle( deck.begin(), deck.end(), std::mt19937_64( game_seed ) );
 
-        Cascade *cur_cascade = &cascades[ 0 ];
+        Cascade *cur_cascade = &game->cascades[ 0 ];
         for ( const Card &c : deck )
         {
             cur_cascade->m_cards[ cur_cascade->size++ ] = c;
             ++cur_cascade;
-            if ( cur_cascade == cascades.end() )
+            if ( cur_cascade == game->cascades.end() )
             {
-               cur_cascade = &cascades[ 0 ];
+               cur_cascade = &game->cascades[ 0 ];
             }
         }
+        game->in_history = true;
     }
 
     signal( SIGWINCH, []( int )
