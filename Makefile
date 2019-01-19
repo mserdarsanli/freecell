@@ -16,4 +16,4 @@
 # along with Freecell for Terminal.  If not, see <https://www.gnu.org/licenses/>.
 
 freecell: src/freecell.cpp
-	 g++ -Wall -Wpedantic -std=c++17 src/freecell.cpp -o freecell
+	 g++ -O3 -Wall -Wpedantic -std=c++17 src/freecell.cpp -o freecell
