@@ -656,6 +656,7 @@ Key extract_key( std::string_view &input )
         if ( input.size() >= 3 && input.substr( 0, 3 ) == "\033[C"   ) { input = input.substr( 3 ); return Key::ArrowRight; }
         if ( input.size() >= 3 && input.substr( 0, 3 ) == "\033[D"   ) { input = input.substr( 3 ); return Key::ArrowLeft; }
         if ( input.size() >= 5 && input.substr( 0, 5 ) == "\033[11~" ) { input = input.substr( 5 ); return Key::F1; }
+        if ( input.size() >= 3 && input.substr( 0, 3 ) == "\033OP"   ) { input = input.substr( 3 ); return Key::F1; }
     }
 
     // Unknown char sequence
