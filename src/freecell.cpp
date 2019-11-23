@@ -468,6 +468,15 @@ void draw_card( const Card &c, int row, int col, int attrs = 0 )
     }
 }
 
+bool is_full_foundations( GameState* game )
+{
+        if ( game->foundations[0].m_number == Number::King && game->foundations[1].m_number == Number::King
+                && game->foundations[2].m_number == Number::King && game->foundations[3].m_number == Number::King )
+                return true;
+        else
+                return false;
+}
+
 void draw_frame()
 {
     // Clear screen first
@@ -583,6 +592,13 @@ void draw_frame()
 
     if ( quit_confirmation )
     {
+        if( is_full_foundations( game ) )
+	    {
+		    std::cout << csi::set_bg_color( 235 ) << csi::set_fg_color( 255 )
+			          << csi::set_bright()
+			          << csi::reset_cursor( top_row + 14, start_col + 23) << "      WIN      "
+		     	      << csi::set_no_bright();
+	    }
         std::cout << csi::set_bg_color( 196 ) << csi::set_fg_color( 255 )
                   << csi::set_bright()
                   << csi::reset_cursor( top_row + 15, start_col + 23 ) << "               "
@@ -890,6 +906,8 @@ int main( int argc, char* argv[] )
             std::cerr << "Processing input of size = " << input.size() << "\n";
             process_key( extract_key( input ) );
         }
+        if( is_full_foundations( game ) )
+	        process_key( Key::Q );
     }
 
 
